@@ -56,17 +56,58 @@ public class VirtualQueueWsHandler implements WebSocketHandler {
 
         // 2. Escuchar las notificaciones posteriores.
         Flux<UserEvent> updates =
-                subscribeQueueUC.execute(employeeId.toString());
+                subscribeQueueUC.execute(employeeId.toString())
+                        .doOnNext(event ->
+                                log.info(
+                                        "WS SEND -> {}",
+                                        event.type()
+                                )).doOnSubscribe(subscription ->
+                                log.info(
+                                        "WS SUBSCRIBED {}",
+                                        employeeId
+                                )
+                        )
+                        .doOnNext(event ->
+                                log.info(
+                                        "WS EVENT RECEIVED {}",
+                                        event.type()
+                                )
+                        )
+                        .doOnCancel(() ->
+                                log.info(
+                                        "WS CANCELLED {}",
+                                        employeeId
+                                )
+                        );
 
         // 3. Combinar la fotografía inicial y las actualizaciones.
-        Flux<String> outgoingMessages = Flux
-                .merge(initialSnapshot, updates)
-                .map(objectMessageMapper::writeValueAsString)
-                .doOnError(error -> log.error(
-                        "Error transmitiendo eventos WebSocket para employeeId {}",
-                        employeeId,
-                        error
-                ));
+        /*Flux<String> outgoingMessages = Flux
+                .merge(initialSnapshot, updates)*/
+        Flux<String> outgoingMessages =
+                Flux.concat(
+                                initialSnapshot,
+                                updates
+                        )
+                        .doOnSubscribe(s ->
+                                log.info("OUTGOING SUBSCRIBED"))
+                        .doOnComplete(() ->
+                                log.info("OUTGOING COMPLETED"))
+                        .doOnCancel(() ->
+                                log.info("OUTGOING CANCELLED"))
+                        .doOnNext(event ->
+                                log.info(
+                                        "ENVIANDO EVENTO AL WS {}",
+                                        event.type()
+                                )
+                        )
+                        .map(objectMessageMapper::writeValueAsString)
+                        .doOnError(error ->
+                                log.error(
+                                        "Error transmitiendo eventos WebSocket para employeeId {}",
+                                        employeeId,
+                                        error
+                                )
+                        );
 
         // 4. Enviar mensajes y mantener la recepción activa
         // mientras la sesión permanezca conectada.
@@ -74,11 +115,16 @@ public class VirtualQueueWsHandler implements WebSocketHandler {
                         outgoingMessages.map(session::textMessage)
                 )
                 .and(session.receive().then())
-                .doFinally(signal -> log.info(
-                        "Conexión WebSocket cerrada para employeeId {}: {}",
-                        employeeId,
-                        signal
-                ));
+                .doOnCancel(() ->
+                        log.info("SESSION CANCEL"))
+                .doOnTerminate(() ->
+                        log.info("SESSION TERMINATE"))
+                .doFinally(signal ->
+                        log.info(
+                                "Conexión WebSocket cerrada para employeeId {}: {}",
+                                employeeId,
+                                signal
+                        ));
     }
 
     private UUID extractEmployeeId(WebSocketSession session) {

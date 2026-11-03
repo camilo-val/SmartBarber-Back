@@ -30,13 +30,15 @@ public class ConnectionManager implements MessageNotificationPort{
 
     @Value("${payment.key}")
     private String key;
+    @Value("${service.payment-service}")
+    private String paymentServiceUrl;
 
     public Mono<Void> connect() {
         UUID userId= UUID.fromString(key);
 
         log.info("Connecting to WebSocket server with userId: {}", userId);
         return client.execute(
-                URI.create("ws://localhost:8081/ws/payment?userId=" + userId),
+                URI.create(paymentServiceUrl + "/ws/payment?userId=" + userId),
                 session -> {
                     connectionPaymentManager.registerSession(userId, session);
                     return session.receive()

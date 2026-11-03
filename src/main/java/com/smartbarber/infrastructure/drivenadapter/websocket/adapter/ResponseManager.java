@@ -25,7 +25,7 @@ public class ResponseManager implements MessageResponsePort  {
             new ConcurrentHashMap<>();
 
     public Mono<TransactionCommand> waitForResponse(UUID orderId) {
-        Sinks.Many<TransactionCommand> sink = Sinks.many().multicast().onBackpressureBuffer();
+        Sinks.Many<TransactionCommand> sink = Sinks.many().replay().latest();
         pending.put(orderId, sink);
         return sink.asFlux()
                 .next()

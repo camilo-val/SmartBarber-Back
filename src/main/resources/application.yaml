@@ -38,3 +38,6 @@ server:
 
 firebase:
   credentials: ${FIREBASE_CREDENTIALS}
+
+service:
+  payment-service: ${PAYMENT_SERVICE_URL}

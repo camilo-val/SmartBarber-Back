@@ -14,7 +14,7 @@ public class NotificationEventAdapter implements NotificationEventPort {
     private final Sinks.Many<BarberQueue> sink;
 
     public NotificationEventAdapter() {
-        this.sink = Sinks.many().multicast().onBackpressureBuffer();
+        this.sink = Sinks.many().replay().latest();
     }
 
     @Override

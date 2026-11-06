@@ -31,7 +31,7 @@ logging:
 
 payment:
   key: ${PAYMENT_KEY}
-  timeout: 15
+  timeout: ${PAYMENT_TIMEOUT:30}
 
 server:
   port: ${PORT:8080}

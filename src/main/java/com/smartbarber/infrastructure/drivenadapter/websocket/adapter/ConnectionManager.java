@@ -12,8 +12,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.UUID;
 
 @Log4j2
@@ -33,9 +35,9 @@ public class ConnectionManager implements MessageNotificationPort{
     @Value("${service.payment-service}")
     private String paymentServiceUrl;
 
-    public Mono<Void> connect() {
+    /*public Mono<Void> connect() {
         UUID userId= UUID.fromString(key);
-
+        log.info("WS URL: {} /ws/payment?userId={}",paymentServiceUrl, userId);
         log.info("Connecting to WebSocket server with userId: {}", userId);
         return client.execute(
                 URI.create(paymentServiceUrl + "/ws/payment?userId=" + userId),
@@ -51,7 +53,88 @@ public class ConnectionManager implements MessageNotificationPort{
                             .then();
                 }
         );
+    }*/
+
+    public Mono<Void> connect() {
+
+        UUID userId = UUID.fromString(key);
+
+        return Mono.defer(() -> {
+
+                    log.info("Starting websocket connection...");
+
+                    return client.execute(
+                            URI.create(
+                                    paymentServiceUrl +
+                                            "/ws/payment?userId=" +
+                                            userId
+                            ),
+                            session -> {
+
+                                log.info("Connected WS {}", session.getId());
+
+                                connectionPaymentManager.registerSession(
+                                        userId,
+                                        session
+                                );
+
+                                return session.receive()
+                                        .flatMap(payload -> {
+
+                                            TransactionCommand transaction =
+                                                    objectMapper.readValue(
+                                                            payload.getPayloadAsText(),
+                                                            TransactionCommand.class
+                                                    );
+
+                                            return gatewayResponseHandler
+                                                    .handle(
+                                                            transaction.status(),
+                                                            transaction.orderId()
+                                                    )
+                                                    .doOnSuccess(unused ->
+                                                            RsManager.completeResponse(
+                                                                    transaction.orderId(),
+                                                                    transaction
+                                                            ));
+                                        })
+                                        .doFinally(signalType -> {
+
+                                            log.warn(
+                                                    "WS disconnected. Signal: {}",
+                                                    signalType
+                                            );
+
+                                            connectionPaymentManager.removeSession(
+                                                    userId
+                                            );
+
+                                        })
+                                        .then();
+                            }
+                    );
+
+                })
+
+                // reconectar si el servidor cerró normalmente
+                .repeatWhen(repeat ->
+                        repeat.delayElements(Duration.ofSeconds(5))
+                )
+
+                // reconectar si hubo error
+                .retryWhen(
+                        Retry.fixedDelay(
+                                        Long.MAX_VALUE,
+                                        Duration.ofSeconds(5)
+                                )
+                                .doBeforeRetry(retry ->
+                                        log.warn(
+                                                "Retrying websocket connection..."
+                                        )
+                                )
+                ).then();
     }
+
 
     @Override
     public <T> Mono<Void> notification(T command) {

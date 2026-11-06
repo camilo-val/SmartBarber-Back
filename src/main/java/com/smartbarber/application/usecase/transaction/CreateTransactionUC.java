@@ -5,6 +5,7 @@ import com.smartbarber.domain.model.transaction.Transaction;
 import com.smartbarber.domain.port.event.MessageNotificationPort;
 import com.smartbarber.domain.port.transaction.TransactionRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -13,6 +14,7 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class CreateTransactionUC {
     private final TransactionRepositoryPort repositoryPort;
     private static final String CURRENCY = "COP";
@@ -30,6 +32,10 @@ public class CreateTransactionUC {
                             .orderId(transaction.getOrderId())
                             .build();
                     return messagePort.notification(message)
+                            .doOnNext(e -> log.info("Notification sent: {}", e))
+                            .doOnSuccess(e -> log.info("Notification successful: {}", e))
+                            .doOnCancel(() -> log.warn("Notification cancelled for transaction: {}", transaction.getOrderId()))
+                            .doOnError(error -> log.error("Error sending notification for transaction: {}, error: {}", transaction.getOrderId(), error.getMessage()))
                             .thenReturn(transaction);
                 });
     }

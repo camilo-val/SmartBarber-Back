@@ -4,6 +4,7 @@ import com.smartbarber.domain.enums.SubscriptionBarberStatus;
 import com.smartbarber.domain.exceptions.BusinessExceptions;
 import com.smartbarber.domain.exceptions.subscriptionbarber.SubscriptionBarberMessageExceptions;
 import com.smartbarber.domain.model.subscriptionbarber.SubscriptionBarbershop;
+import com.smartbarber.domain.port.subscription.SubscriptionRepositoryPort;
 import com.smartbarber.domain.port.subscriptionbarbershop.SubscriptionBarbershopRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FindSubscriptionBarberUC {
     private final SubscriptionBarbershopRepositoryPort port;
+    private final SubscriptionRepositoryPort planPort;
 
     public Flux<SubscriptionBarbershop> findSubscriptionByBarberId(UUID barberId) {
         return port.findByBarberId(barberId);

@@ -13,7 +13,8 @@ public class SubscriptionBarbershopRouter {
     public RouterFunction<ServerResponse> subscriptionBarbershopRoutes(SubscriptionBarbershopHandler handler) {
         return RouterFunctions.route(RequestPredicates.POST(SUBSCRIPTION_BARBER_SERVICE+ "/create"), handler::createSubscriptionForBarber)
                 .andRoute(RequestPredicates.PUT(SUBSCRIPTION_BARBER_SERVICE+ "/renew"), handler::renewSubscriptionForBarber)
-                .andRoute(RequestPredicates.GET(SUBSCRIPTION_BARBER_SERVICE+ "/actual-subscription/{barberId}"), handler::findActualSubscriptionByBarberId);
+                .andRoute(RequestPredicates.GET(SUBSCRIPTION_BARBER_SERVICE+ "/actual-subscription/{barberId}"), handler::findActualSubscriptionByBarberId)
+                .andRoute(RequestPredicates.GET(SUBSCRIPTION_BARBER_SERVICE+ "/subscription-history/{barberId}"), handler::findSubscriptionHistoryByBarberId);
                 //.andRoute(RequestPredicates.PUT(SUBSCRIPTION_BARBER_SERVICE+ "/renew"), handler::renewSubscriptionForBarber);
     }
 

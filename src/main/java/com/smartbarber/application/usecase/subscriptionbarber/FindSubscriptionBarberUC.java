@@ -49,4 +49,10 @@ public class FindSubscriptionBarberUC {
         return port.findActualSubscription(barberId)
                 .switchIfEmpty(Mono.error(() -> new BusinessExceptions(SubscriptionBarberMessageExceptions.SUBSCRIPTION_BARBER_NOT_FOUND)));
     }
+
+    public Flux<SubscriptionBarbershop> findActualSubscriptionsByBarberId(UUID barberId) {
+        return port.findByBarberId(barberId)
+                .switchIfEmpty(Flux.error(() -> new BusinessExceptions(SubscriptionBarberMessageExceptions.SUBSCRIPTION_BARBER_NOT_FOUND)));
+    }
+
 }

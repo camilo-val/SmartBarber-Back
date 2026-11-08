@@ -4,6 +4,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 
 @Configuration
 @RequiredArgsConstructor
+@Slf4j
 public class FirebaseConfig {
 
     @Value("${firebase.credentials}")
@@ -21,7 +23,7 @@ public class FirebaseConfig {
 
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
-
+        log.info("Initializing FirebaseApp with provided credentials: {}", credentialsJson);
         GoogleCredentials credentials =
                 GoogleCredentials.fromStream(
                         new ByteArrayInputStream(

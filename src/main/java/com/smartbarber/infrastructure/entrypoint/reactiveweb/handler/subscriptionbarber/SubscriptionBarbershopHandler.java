@@ -55,4 +55,12 @@ public class SubscriptionBarbershopHandler {
                 .switchIfEmpty(Mono.error(() -> new TechnicalExceptions(TechnicalMessageExceptions.BAD_REQUEST)));
     }
 
+    public Mono<ServerResponse> findSubscriptionHistoryByBarberId(ServerRequest request){
+        UUID barberId = UUID.fromString(request.pathVariable("barberId"));
+        return findSubscriptionBarberUC.findActualSubscriptionsByBarberId(barberId)
+                .map(mapper::toResponse)
+                .collectList()
+                .flatMap(response -> ServerResponse.ok().bodyValue(response))
+                .switchIfEmpty(Mono.error(() -> new TechnicalExceptions(TechnicalMessageExceptions.BAD_REQUEST)));
+    }
 }

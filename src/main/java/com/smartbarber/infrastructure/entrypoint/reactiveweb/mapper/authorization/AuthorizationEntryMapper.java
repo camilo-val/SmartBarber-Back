@@ -1,7 +1,7 @@
 package com.smartbarber.infrastructure.entrypoint.reactiveweb.mapper.authorization;
 
 import com.smartbarber.domain.enums.RoleType;
-import com.smartbarber.domain.model.Authentication;
+import com.smartbarber.domain.model.authentication.Authentication;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.authorization.AuthorizationRsDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

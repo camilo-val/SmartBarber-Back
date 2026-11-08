@@ -5,16 +5,13 @@ import com.smartbarber.domain.enums.SubscriptionBarberStatus;
 import com.smartbarber.domain.enums.UserStatus;
 import com.smartbarber.domain.exceptions.BusinessExceptions;
 import com.smartbarber.domain.exceptions.authorization.AuthorizationMessageExceptions;
-import com.smartbarber.domain.exceptions.barbershop.BarberShopMessageExceptions;
-import com.smartbarber.domain.model.Authentication;
+import com.smartbarber.domain.model.authentication.Authentication;
 import com.smartbarber.domain.model.barbershop.Barbershop;
 import com.smartbarber.domain.model.barbershop.BarbershopResponse;
 import com.smartbarber.domain.model.role.Role;
 import com.smartbarber.domain.model.subscriptionbarber.SubscriptionBarbershop;
-import com.smartbarber.domain.model.suscription.Subscription;
 import com.smartbarber.domain.model.user.User;
 import com.smartbarber.domain.port.*;
-import com.smartbarber.domain.port.subscription.SubscriptionRepositoryPort;
 import com.smartbarber.domain.port.subscriptionbarbershop.SubscriptionBarbershopRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -73,7 +70,8 @@ AuthenticationUC {
                                     : buildEmployeeResponse(user)
                         )
 
-                );
+                ).switchIfEmpty(Mono.error(()->new BusinessExceptions(AuthorizationMessageExceptions.INVALID_DATA)))
+                .doOnError(error -> new BusinessExceptions(AuthorizationMessageExceptions.FORBIDDEN));
     }
     public Mono<String> getUserUid(String idToken){
         System.out.println("Authentication.getUserUid: " + idToken);

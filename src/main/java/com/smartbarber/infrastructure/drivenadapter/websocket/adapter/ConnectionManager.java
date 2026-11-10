@@ -58,7 +58,7 @@ public class ConnectionManager implements MessageNotificationPort{
     public Mono<Void> connect() {
 
         UUID userId = UUID.fromString(key);
-
+        log.info("WS URL: {} /ws/payment?userId={}", paymentServiceUrl, userId);
         return Mono.defer(() -> {
 
                     log.info("Starting websocket connection...");

@@ -97,7 +97,7 @@ public interface ReservationData
         FROM public.reserva r
         INNER JOIN public.empleado e
             ON e.id_empleado = r.id_empleado
-        WHERE e.user_id = :barberId
+        WHERE e.id_barberia = :barberId
         ORDER BY r.fecha_creacion DESC
         """)
     Flux<ReservationEntity> findAllBarberId(

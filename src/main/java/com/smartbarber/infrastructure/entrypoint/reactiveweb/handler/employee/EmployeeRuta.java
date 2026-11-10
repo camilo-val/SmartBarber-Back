@@ -22,6 +22,7 @@ public class EmployeeRuta {
                 .andRoute(RequestPredicates.GET(EMPLOYEE_SERVICE + "/nombre/{nombre}"),employeeHandler::findEmployeeByName)
                 .andRoute(RequestPredicates.GET(EMPLOYEE_SERVICE + "/documento/{documento}"),employeeHandler::findByEmployeeByDocument)
                 .andRoute(RequestPredicates.GET(EMPLOYEE_SERVICE + "/id/{id}"),employeeHandler::findEmployeeById)
-                .andRoute(RequestPredicates.PUT(EMPLOYEE_SERVICE + "/actualizar-empleado/{id}"),employeeHandler::updateEmployee);
+                .andRoute(RequestPredicates.PUT(EMPLOYEE_SERVICE + "/actualizar-empleado/{id}"),employeeHandler::updateEmployee)
+                .andRoute(RequestPredicates.PATCH(EMPLOYEE_SERVICE + "/block-employee/{id}"),employeeHandler::blockEmployee);
     }
 }

@@ -15,6 +15,9 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+import static com.smartbarber.infrastructure.entrypoint.utils.constants.HandlerConstant.BARBER_SERVICE;
+import static com.smartbarber.infrastructure.entrypoint.utils.constants.HandlerConstant.CUSTOMER_SERVICE;
+
 @Configuration
 @EnableWebFluxSecurity
 @RequiredArgsConstructor
@@ -35,16 +38,11 @@ public class SecurityConfig {
                 .authorizeExchange(exchange -> exchange
                         // Rutas públicas
                         .pathMatchers(
-                                "/ws/virtual-queue/**",
-                                "/ws/payment/**",
-                                "/auth/**",
-                                "/reservation-service/**",
-                                "/schedule-service/**",
-                                "/services-service/**",
-                                "/customer-service/**",
-                                "/reservation-review-service/**",
-                                "/notification-service/**",
-                                "/public/**")
+                                HttpMethod.POST,
+                                BARBER_SERVICE + "/onboarding",
+                                CUSTOMER_SERVICE + "/onboarding",
+                                "/auth/verify"
+                              )
                         .permitAll()
                         .pathMatchers(
                                 HttpMethod.POST,

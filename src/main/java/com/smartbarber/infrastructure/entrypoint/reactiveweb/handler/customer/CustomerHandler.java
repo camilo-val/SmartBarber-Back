@@ -1,6 +1,7 @@
 package com.smartbarber.infrastructure.entrypoint.reactiveweb.handler.customer;
 
 import com.smartbarber.application.usecase.athentication.AuthenticationUC;
+import com.smartbarber.application.usecase.customer.BlockCustomerUC;
 import com.smartbarber.application.usecase.customer.UpdateCustomerUC;
 import com.smartbarber.application.usecase.customer.CreateCustomerUC;
 import com.smartbarber.application.usecase.customer.SearchCustomerUC;
@@ -19,6 +20,8 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
+import java.util.UUID;
+
 @Component
 @AllArgsConstructor
 @Slf4j
@@ -30,6 +33,7 @@ public class CustomerHandler {
     private final SearchCustomerUC searchCustomerUC;
     private final AuthenticationUC authenticationUc;
     private final CustomerOnboardingEntryMapper  customerOnboardingEntryMapper;
+    private final BlockCustomerUC blockCustomerUC;
 
     public Mono<ServerResponse> createCustomer(ServerRequest request){
         return request.bodyToMono(CustomerRqDto.class)
@@ -81,5 +85,9 @@ public class CustomerHandler {
                         .customerUpdate(request.pathVariable("id"), client))
                 .map(mapper::toResponse)
                 .flatMap( response -> ServerResponse.accepted().bodyValue(response));
+    }
+    public Mono<ServerResponse> blockCustomer(ServerRequest request){
+        return blockCustomerUC.blockCustomer(UUID.fromString(request.pathVariable("id")))
+                .then(ServerResponse.accepted().build());
     }
 }

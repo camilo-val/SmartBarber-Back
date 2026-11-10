@@ -1,6 +1,7 @@
 package com.smartbarber.infrastructure.entrypoint.reactiveweb.handler.employee;
 
 import com.smartbarber.application.usecase.athentication.AuthenticationUC;
+import com.smartbarber.application.usecase.employee.BlockEmployeeUC;
 import com.smartbarber.application.usecase.employee.CreateEmployeeUC;
 import com.smartbarber.application.usecase.employee.SearchEmployeeUC;
 import com.smartbarber.application.usecase.employee.UpdateEmployeeUC;
@@ -29,7 +30,8 @@ public class EmployeeHandler {
     private final EmployeeEntryMapper mapper;
     private final EmployeeOnboardingMapper onboardingMapper;
     private final CreateEmployeeUC createEmployeeUC;
-    private final  validateRequest validateRequest;
+    private final BlockEmployeeUC blockEmployeeUC;
+    private final validateRequest validateRequest;
     private final UpdateEmployeeUC updateEmployeeUC;
     private final SearchEmployeeUC searchEmployeeUC;
     private final AuthenticationUC authenticationUc;
@@ -86,6 +88,10 @@ public class EmployeeHandler {
                         .employeeUpdate(request.pathVariable("id"), employee))
                 .map(mapper::toResponse)
                 .flatMap(response -> ServerResponse.accepted().bodyValue(response));
+    }
+    public Mono<ServerResponse> blockEmployee(ServerRequest request){
+        return blockEmployeeUC.blockEmployee(UUID.fromString(request.pathVariable("id")))
+                .then(ServerResponse.accepted().build());
     }
 
     public Mono<ServerResponse> findEmployeeByBarbershop(ServerRequest request){

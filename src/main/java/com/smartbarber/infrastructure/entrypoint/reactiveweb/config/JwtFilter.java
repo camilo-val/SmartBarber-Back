@@ -129,11 +129,11 @@ public class JwtFilter implements WebFilter {
     private boolean isPublicPath(String path) {
         return path.startsWith("/auth/")
                 || path.equals("/auth")
-                || path.startsWith("/reservation-service/")
+                /*|| path.startsWith("/reservation-service/")
                 || path.equals("/reservation-service")
                 || path.startsWith("/schedule-service/")
                 || path.equals("/schedule-service")
                 || path.startsWith("/public/")
-                || path.equals("/public");
+                || path.equals("/public")*/;
     }
 }

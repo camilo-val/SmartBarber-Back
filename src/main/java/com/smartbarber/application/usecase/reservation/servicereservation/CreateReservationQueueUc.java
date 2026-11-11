@@ -20,6 +20,8 @@ import com.smartbarber.domain.port.queue.BarberQueuePort;
 import com.smartbarber.domain.port.reservation.ReservationRepositoryPort;
 import com.smartbarber.domain.port.reservation.ServiceReservationPort;
 import com.smartbarber.infrastructure.drivenadapter.postgres.entity.BarberQueueEntity;
+import com.smartbarber.application.usecase.nonworkingday.BarbershopCalendar;
+import com.smartbarber.application.usecase.nonworkingday.FindNonWorkingDaysUC;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
@@ -44,13 +46,17 @@ public class CreateReservationQueueUc {
     private final TransactionalOperator transactionalOperator;
     private final CustomerPort customerPort;
     private final QueueAvailabilityService queueAvailabilityService;
+    private final FindNonWorkingDaysUC findNonWorkingDaysUC;
+    private final BarbershopCalendar barbershopCalendar;
 
 
     public Mono<ReservationResponse> createReservation(ReservationCommand command) {
         validateCommand(command);
 
-        Mono<ReservationResponse> operation = barberQueuePort
-                .findByEmployeeIdForUpdate(command.employeeId())
+        // En un día no laborable de la barbería no se reciben turnos en la cola.
+        Mono<ReservationResponse> operation = findNonWorkingDaysUC
+                .ensureOpen(command.barbershopId(), barbershopCalendar.today())
+                .then(barberQueuePort.findByEmployeeIdForUpdate(command.employeeId()))
                 .switchIfEmpty(Mono.error(new IllegalStateException(
                         "El barbero no tiene una cola configurada. Debe abrirla primero."
                 )))

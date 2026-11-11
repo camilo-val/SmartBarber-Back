@@ -15,6 +15,8 @@ import com.smartbarber.domain.port.ServicePort;
 import com.smartbarber.domain.port.reservation.ReservationRepositoryPort;
 import com.smartbarber.domain.port.reservation.ServiceReservationPort;
 import com.smartbarber.infrastructure.drivenadapter.email.EmailService;
+import com.smartbarber.application.usecase.nonworkingday.BarbershopCalendar;
+import com.smartbarber.application.usecase.nonworkingday.FindNonWorkingDaysUC;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
@@ -42,6 +44,8 @@ public class CreateReservationUc {
     private final NotificationPort notificationPort;
     private final CustomerPort customerPort;
     private final EmailService emailService;
+    private final FindNonWorkingDaysUC findNonWorkingDaysUC;
+    private final BarbershopCalendar barbershopCalendar;
 
     public Mono<Reservation> createReservation(ReservationCommand command) {
         System.out.println("Reservation command: " + command);
@@ -93,7 +97,14 @@ public class CreateReservationUc {
                                 ReservationMessageExceptions.RESERVATION_ALREADY_EXISTS))
                                 : Mono.empty());
 
-        return Mono.when(employeeValidation, customerValidation);
+        // La barbería no atiende en sus días no laborables (festivos, cierres).
+        Mono<Void> openDayValidation = command.startTime() == null
+                ? Mono.empty()
+                : findNonWorkingDaysUC.ensureOpen(
+                        command.barbershopId(),
+                        barbershopCalendar.dateOf(command.startTime()));
+
+        return Mono.when(openDayValidation, employeeValidation, customerValidation);
     }
 
     private Mono<List<Service>> loadServices(List<Integer> serviceIds) {

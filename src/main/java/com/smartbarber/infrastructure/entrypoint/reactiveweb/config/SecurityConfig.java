@@ -66,6 +66,11 @@ public class SecurityConfig {
                                 RoleType.BARBER.name(),
                                 RoleType.ADMIN.name()
                         )
+                        // Días no laborables: solo el administrador los crea o elimina.
+                        .pathMatchers(HttpMethod.POST, "/non-working-day-service")
+                        .hasRole(RoleType.ADMIN.name())
+                        .pathMatchers(HttpMethod.DELETE, "/non-working-day-service/*")
+                        .hasRole(RoleType.ADMIN.name())
                         .pathMatchers(HttpMethod.GET, "/user-service/**")
                                 .hasRole(RoleType.BARBER.name())
                         //.permitAll()

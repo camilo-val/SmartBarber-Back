@@ -17,11 +17,24 @@ public class NotificationWebSocketHandler implements WebSocketHandler {
 
     @Override
     public Mono<Void> handle(WebSocketSession session) {
-        System.out.println("NotificationWebSocketHandler.handle: " + session.getId());
+        System.out.println("WebSocket conectado: " + session.getId());
+
         return session.send(
                 adapter.getSink()
                         .asFlux()
+                        .doOnSubscribe(subscription ->
+                                System.out.println("Suscrito a eventos de notificaciones")
+                        )
+                        .doOnNext(event ->
+                                System.out.println("Evento recibido del adapter: " + event)
+                        )
+                        .doOnError(error ->
+                                System.err.println("Error en el flujo WS: " + error.getMessage())
+                        )
                         .map(objectMapper::writeValueAsString)
+                        .doOnNext(json ->
+                                System.out.println("JSON enviado por WS: " + json)
+                        )
                         .map(session::textMessage)
         );
     }

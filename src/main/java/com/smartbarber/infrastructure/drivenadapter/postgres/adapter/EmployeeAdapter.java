@@ -70,4 +70,22 @@ public class EmployeeAdapter  implements EmployeePort{
 
     @Override
     public Mono<Boolean> existsByDocument(String document) { return employeeData.existsByDocument(document); }
+
+    @Override
+    public Mono<Employee> findAdministratorByBarbershopId(UUID barbershopId) {
+        return employeeData
+                .findByBarberiaIdAndSpecialtyIgnoreCase(
+                        barbershopId,
+                        "administrador"
+                )
+                .map(mapper::toDomain)
+                .doOnError(error ->
+                        log.error(
+                                "Error buscando administrador de la barbería: {}",
+                                barbershopId,
+                                error
+                        )
+                );
+    }
+
 }

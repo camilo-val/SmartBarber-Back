@@ -16,6 +16,7 @@ public interface EmployeePort {
     Mono<Employee> update( UUID id, Employee employee);
     Mono<Void> eliminarEmpleado(UUID id);
     Mono<Boolean> existsByDocument(String document);
+    Mono<Employee> findAdministratorByBarbershopId(UUID barbershopId);
 
 
 }

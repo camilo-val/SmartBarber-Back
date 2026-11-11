@@ -22,20 +22,18 @@ public class FirebaseAuthAdapter implements FirebaseAuthPort {
         return formatToken(idToken)
                 .flatMap(token ->
                         getInstance(token).map(tokenFirebase ->
-                                !tokenFirebase.isEmpty()).doOnNext(e -> System.out.println("TokenAAA: " + e)));
+                                !tokenFirebase.isEmpty()));
     }
 
     @Override
     public Mono<Boolean> isExpiredToken(String idToken) {
         return formatToken(idToken)
                 .flatMap(token ->
-                    getInstance(token).doOnNext(e -> System.out.println("ASDASDSADSA"+e))
+                    getInstance(token)
                             .map(mapClaims -> {
-                                System.out.println("idToken expired : " + mapClaims.get("exp"));
                                 Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
                                 long date = (Long) mapClaims.get("exp");
                                 Instant expirationDate = Instant.ofEpochSecond(date);
-                                System.out.println( "DATA VALIDATION + " + expirationDate.isBefore(now) + " NOW: " + Instant.now() + "expirationDate: " + expirationDate );
                                 return expirationDate.isBefore(now);
                             })
                 );
@@ -57,15 +55,13 @@ public class FirebaseAuthAdapter implements FirebaseAuthPort {
     @Override
     public Mono<String> getUid(String idToken) {
 
-        System.out.println("idToken user: " + idToken);
         return formatToken(idToken)
                 .flatMap(token ->getInstance(token)
-                        .map(mapClaims -> (String) mapClaims.get("user_id")).doOnNext(e -> System.out.println("getUid: " + e)));
+                        .map(mapClaims -> (String) mapClaims.get("user_id")));
     }
 
 
     private Mono<Map<String, Object>> getInstance(String idToken) {
-        System.out.println("idToken: getInstance " + idToken);
             return Mono.fromCallable(() -> {
 
                 try {

@@ -9,6 +9,8 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.util.Objects;
+
 @Component
 public class CurrentAuthenticationAdapter
         implements CurrentAuthenticationPort {
@@ -20,7 +22,7 @@ public class CurrentAuthenticationAdapter
                 .map(SecurityContext::getAuthentication)
                 .map(authentication ->
                         (AuthenticatedPrincipal)
-                                authentication.getPrincipal()
+                                Objects.requireNonNull(authentication.getPrincipal())
                 )
                 .map(AuthenticatedPrincipal::data);
     }

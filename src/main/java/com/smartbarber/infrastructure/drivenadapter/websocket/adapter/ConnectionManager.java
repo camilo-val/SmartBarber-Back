@@ -90,6 +90,12 @@ public class ConnectionManager implements MessageNotificationPort{
                                         .doOnError(error ->
                                                 log.error("WS RECEIVE ERROR", error)
                                         )
+                                        .doOnNext(payload ->
+                                                log.info(
+                                                        "WS MESSAGE RECEIVED: {}",
+                                                        payload.getPayloadAsText()
+                                                )
+                                        )
                                         .flatMap(payload -> {
 
                                             TransactionCommand transaction =

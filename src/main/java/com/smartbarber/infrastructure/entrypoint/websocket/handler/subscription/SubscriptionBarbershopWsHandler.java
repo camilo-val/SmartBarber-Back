@@ -1,4 +1,5 @@
 package com.smartbarber.infrastructure.entrypoint.websocket.handler.subscription;
+import com.smartbarber.application.usecase.athentication.AuthenticationUC;
 import com.smartbarber.application.usecase.subscriptionbarber.FindSubscriptionBarberUC;
 import com.smartbarber.application.usecase.transaction.WaitMessageResponseUC;
 import com.smartbarber.domain.model.subscriptionbarber.SubscriptionBarbershop;
@@ -23,6 +24,8 @@ public class SubscriptionBarbershopWsHandler implements WebSocketHandler {
     private final FindSubscriptionBarberUC findSubscriptionBarberUC;
     private final ObjectMessageMapper objectMapper;
     private final WaitMessageResponseUC messageResponseUC;
+    private final AuthenticationUC authenticationUC;
+    private final String TYPE = "Bearer";
     @Override
     public List<String> getSubProtocols() {
         return WebSocketHandler.super.getSubProtocols();
@@ -34,8 +37,12 @@ public class SubscriptionBarbershopWsHandler implements WebSocketHandler {
         log.info("ENTREEEEEE WSSSSSS");
 
         UUID orderId = extractOrderId(session);
+        String token = extractIdToken(session);
         connectionManager.registerSession(orderId, session);
-       return session.send(
+        log.info("JWTAAAA: {}", token);
+       return  authenticationUC.authorizationSession(TYPE + " " + token)
+               .then(
+               session.send(
                messageResponseUC.waitForResponseAndSendMessage(orderId)
                        .doOnNext(transactionComplete -> log.info("SubscriptionBarbershopWsHandler.handle: transactionComplete: {}", transactionComplete))
                        .flatMap(transactionComplete ->
@@ -46,7 +53,7 @@ public class SubscriptionBarbershopWsHandler implements WebSocketHandler {
                                                .build()
                                        )
                        ).map(message -> session.textMessage(objectMapper.writeValueAsString(message)))
-       );
+       ));
     }
 
     private UUID extractOrderId(WebSocketSession session) {
@@ -57,6 +64,16 @@ public class SubscriptionBarbershopWsHandler implements WebSocketHandler {
                 .getFirst("orderId");
         assert orderId != null;
         return UUID.fromString(orderId);
+    }
+
+    private String extractIdToken(WebSocketSession session) {
+        String idToken = UriComponentsBuilder
+                .fromUri(session.getHandshakeInfo().getUri())
+                .build()
+                .getQueryParams()
+                .getFirst("token");
+        assert idToken != null;
+        return idToken;
     }
 }
 

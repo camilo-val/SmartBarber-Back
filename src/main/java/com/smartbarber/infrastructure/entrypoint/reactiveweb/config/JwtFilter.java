@@ -80,7 +80,8 @@ public class JwtFilter implements WebFilter {
 // directamente al usar la API WebSocket.
         if ((authorization == null || authorization.isBlank())
                 && (path.equals("/ws/virtual-queue")
-                || path.equals("/ws/notifications"))) {
+                || path.equals("/ws/notifications")
+                || path.equals("/ws/payment"))) {
 
             String token = exchange.getRequest()
                     .getQueryParams()

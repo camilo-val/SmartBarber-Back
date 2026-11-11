@@ -38,8 +38,9 @@ public class JwtFilter implements WebFilter {
                 .getPath()
                 .value();
 
-        // Las rutas públicas no necesitan JWT
-        if (isPublicPath(path)) {
+        // Las rutas públicas y los registros (onboarding) no necesitan sesión:
+        // en un registro la cuenta de Firebase todavía no existe en SmartBarber.
+        if (isPublicPath(path) || isSelfOnboarding(exchange, path)) {
             return chain.filter(exchange);
         }
 
@@ -124,6 +125,16 @@ public class JwtFilter implements WebFilter {
                                             .withAuthentication(authentication)
                             );
                 });
+    }
+
+    private static final java.util.Set<String> SELF_ONBOARDING_PATHS = java.util.Set.of(
+            "/barber-service/onboarding",
+            "/customer-service/onboarding"
+    );
+
+    private boolean isSelfOnboarding(ServerWebExchange exchange, String path) {
+        return org.springframework.http.HttpMethod.POST.equals(exchange.getRequest().getMethod())
+                && SELF_ONBOARDING_PATHS.contains(path);
     }
 
     private boolean isPublicPath(String path) {

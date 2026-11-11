@@ -21,6 +21,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
+import static com.smartbarber.infrastructure.entrypoint.utils.constants.HandlerConstant.IDTOKEN;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 @Component
@@ -50,7 +51,9 @@ public class EmployeeHandler {
         return request.bodyToMono(EmployeeOnboardingRqDto.class)
                 .doOnNext(validateRequest::validate)
                 .flatMap(requestBody ->
-                        authenticationUc.getUserUid(request.headers().header(AUTHORIZATION).getFirst())
+                        Mono.justOrEmpty(request.headers().firstHeader(IDTOKEN))
+                                .switchIfEmpty(Mono.error(() -> new TechnicalExceptions(TechnicalMessageExceptions.BAD_REQUEST)))
+                                .flatMap(authenticationUc::getUserUid)
                                 .map(uid -> onboardingMapper.toDomain(requestBody, uid)))
                 .flatMap(createEmployeeUC::createEmployeeOnboarding)
                 .doOnNext(e -> log.info("Employee created with id: {}", e))

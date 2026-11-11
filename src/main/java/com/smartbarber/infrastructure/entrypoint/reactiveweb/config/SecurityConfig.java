@@ -39,8 +39,8 @@ public class SecurityConfig {
                         // Rutas públicas
                         .pathMatchers(
                                 HttpMethod.POST,
-                                BARBER_SERVICE + "/onboarding",
-                                CUSTOMER_SERVICE + "/onboarding",
+                                "/" + BARBER_SERVICE + "/onboarding",
+                                "/" + CUSTOMER_SERVICE + "/onboarding",
                                 "/auth/verify"
                               )
                         .permitAll()

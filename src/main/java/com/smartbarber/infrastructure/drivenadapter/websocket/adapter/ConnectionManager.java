@@ -104,16 +104,48 @@ public class ConnectionManager implements MessageNotificationPort{
                                                             TransactionCommand.class
                                                     );
 
+                                            log.info(
+                                                    "TRANSACTION RECEIVED {}",
+                                                    transaction.orderId()
+                                            );
+
                                             return gatewayResponseHandler
                                                     .handle(
                                                             transaction.status(),
                                                             transaction.orderId()
                                                     )
-                                                    .doOnSuccess(unused ->
+                                                    .doOnSubscribe(s ->
+                                                            log.info(
+                                                                    "START HANDLE {}",
+                                                                    transaction.orderId()
+                                                            )
+                                                    )
+                                                    .doOnSuccess(v ->
+                                                            log.info(
+                                                                    "HANDLE SUCCESS {}",
+                                                                    transaction.orderId()
+                                                            )
+                                                    )
+                                                    .doOnError(error ->
+                                                            log.error(
+                                                                    "HANDLE ERROR {}",
+                                                                    transaction.orderId(),
+                                                                    error
+                                                            )
+                                                    )
+                                                    .doFinally(signal ->
+                                                            log.info(
+                                                                    "HANDLE FINALLY {} {}",
+                                                                    transaction.orderId(),
+                                                                    signal
+                                                            )
+                                                    )
+                                                    .doOnSuccess(v ->
                                                             RsManager.completeResponse(
                                                                     transaction.orderId(),
                                                                     transaction
-                                                            ));
+                                                            )
+                                                    );
                                         })
                                         .doFinally(signalType -> {
 

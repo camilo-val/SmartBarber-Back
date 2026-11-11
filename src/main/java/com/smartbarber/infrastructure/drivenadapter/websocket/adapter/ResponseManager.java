@@ -39,10 +39,36 @@ public class ResponseManager implements MessageResponsePort  {
     }
 
     @Override
-    public <T> void completeResponse(UUID orderId, T transaction) {
-        Sinks.Many<TransactionCommand> sink = pending.remove(orderId);
+    public <T> void completeResponse(
+            UUID orderId,
+            T transaction
+    ) {
+
+        log.info(
+                "COMPLETE RESPONSE {}",
+                orderId
+        );
+
+        Sinks.Many<TransactionCommand> sink =
+                pending.remove(orderId);
+
         if (sink != null) {
-            sink.tryEmitNext((TransactionCommand) transaction);
+
+            log.info(
+                    "SINK FOUND {}",
+                    orderId
+            );
+
+            sink.tryEmitNext(
+                    (TransactionCommand) transaction
+            );
+
+        } else {
+
+            log.error(
+                    "SINK NOT FOUND {}",
+                    orderId
+            );
         }
     }
 }

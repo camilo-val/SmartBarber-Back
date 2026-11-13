@@ -34,9 +34,38 @@ public class JwtFilter implements WebFilter {
             ServerWebExchange exchange,
             WebFilterChain chain
     ) {
+
         String path = exchange.getRequest()
                 .getPath()
                 .value();
+
+        log.info("========== REQUEST RECIBIDA ==========");
+        log.info("[REQUEST] Método: {}", exchange.getRequest().getMethod());
+        log.info("[REQUEST] Ruta: {}", path);
+        log.info("[REQUEST] Upgrade: {}",
+                exchange.getRequest().getHeaders().getUpgrade());
+        log.info("=======================================");
+
+        log.info("[JWT] Ruta solicitada: {}", path);
+        log.info(
+                "[JWT] Authorization presente: {}",
+                exchange.getRequest()
+                        .getHeaders()
+                        .getFirst(HttpHeaders.AUTHORIZATION) != null
+        );
+        log.info(
+                "[JWT] Parámetro token presente: {}",
+                exchange.getRequest()
+                        .getQueryParams()
+                        .getFirst("token") != null
+        );
+
+        log.info(
+                "[JWT] Parámetro token presente: {}",
+                exchange.getRequest()
+                        .getQueryParams()
+                        .containsKey("token")
+        );
 
         // Las rutas públicas y los registros (onboarding) no necesitan sesión:
         // en un registro la cuenta de Firebase todavía no existe en SmartBarber.
@@ -47,6 +76,22 @@ public class JwtFilter implements WebFilter {
         String authorization = exchange.getRequest()
                 .getHeaders()
                 .getFirst(HttpHeaders.AUTHORIZATION);
+
+// El navegador no permite configurar Authorization
+// directamente al usar la API WebSocket.
+        if ((authorization == null || authorization.isBlank())
+                && (path.equals("/ws/virtual-queue")
+                || path.equals("/ws/notifications")
+                || path.equals("/ws/payment"))) {
+
+            String token = exchange.getRequest()
+                    .getQueryParams()
+                    .getFirst("token");
+
+            if (token != null && !token.isBlank()) {
+                authorization = "Bearer " + token;
+            }
+        }
 
         // Sin token, Spring Security decidirá si permite el acceso
         if (authorization == null
@@ -73,6 +118,17 @@ public class JwtFilter implements WebFilter {
                             RoleType.ADMIN
                     ).contains(token)) {
                         return Mono.error(() -> new TechnicalExceptions(TechnicalMessageExceptions.FORBIDDEN));
+
+
+                    }
+
+                    if (path.equals("/ws/notifications")
+                            && token != RoleType.CUSTOMER) {
+                        return Mono.error(
+                                () -> new TechnicalExceptions(
+                                        TechnicalMessageExceptions.FORBIDDEN
+                                )
+                        );
                     }
 
                     Authentication authentication =

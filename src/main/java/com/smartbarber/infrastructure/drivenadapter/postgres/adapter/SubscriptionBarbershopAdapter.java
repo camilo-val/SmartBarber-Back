@@ -90,4 +90,17 @@ public class SubscriptionBarbershopAdapter implements SubscriptionBarbershopRepo
         return data.findActualSubscription(barbershopId)
                 .map(mapper::toDomain);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Flux<SubscriptionBarbershop> findActiveSubscriptionsExpiringBetween(
+            Instant initialDate,
+            Instant finalDate
+    ) {
+        return data.findActiveSubscriptionsExpiringBetween(initialDate, finalDate)
+                .map(mapper::toDomain)
+                .doOnError(error ->
+                        log.error("Error finding active subscriptions expiring soon", error)
+                );
+    }
 }

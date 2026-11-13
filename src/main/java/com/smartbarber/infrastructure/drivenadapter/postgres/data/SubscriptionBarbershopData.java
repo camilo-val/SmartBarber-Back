@@ -69,5 +69,17 @@ public interface SubscriptionBarbershopData extends ReactiveCrudRepository<Subsc
             """)
     Mono<SubscriptionBarbershopEntity> findActualSubscription(@Param("barbershopId") UUID barbershopId);
 
+    @Query("""
+        SELECT *
+        FROM suscripcion_barberia
+        WHERE estado = 'ACTIVE'
+        AND fecha_expiracion >= :initialDate
+        AND fecha_expiracion < :finalDate
+        """)
+    Flux<SubscriptionBarbershopEntity> findActiveSubscriptionsExpiringBetween(
+            @Param("initialDate") Instant initialDate,
+            @Param("finalDate") Instant finalDate
+    );
+
 
 }

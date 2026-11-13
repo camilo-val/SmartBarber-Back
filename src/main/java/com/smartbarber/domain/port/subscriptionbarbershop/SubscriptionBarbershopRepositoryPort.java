@@ -21,4 +21,9 @@ public interface SubscriptionBarbershopRepositoryPort {
                                                                Boolean automaticRenew);
 
     Mono<SubscriptionBarbershop> findActualSubscription(UUID barbershopId);
+
+    Flux<SubscriptionBarbershop> findActiveSubscriptionsExpiringBetween(
+            Instant initialDate,
+            Instant finalDate
+    );
 }

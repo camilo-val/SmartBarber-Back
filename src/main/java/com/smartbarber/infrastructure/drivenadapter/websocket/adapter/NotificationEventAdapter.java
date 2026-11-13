@@ -19,12 +19,29 @@ public class NotificationEventAdapter implements NotificationEventPort {
 
     @Override
     public Mono<Void> publish(BarberQueue notification) {
-        System.out.println("NotificationEventAdapter.publish: " + notification);
-        sink.tryEmitNext(notification);
+        return Mono.fromRunnable(() -> {
+            log.info(
+                    "Publicando evento: {}, suscriptores activos: {}",
+                    notification.type(),
+                    sink.currentSubscriberCount()
+            );
 
-        log.info("Notification emitted: {}", notification);
+            var result = sink.tryEmitNext(notification);
 
-        return Mono.empty();
+            if (result.isFailure()) {
+                log.error(
+                        "Falló la emisión del evento {}: {}. Suscriptores activos: {}",
+                        notification.type(),
+                        result,
+                        sink.currentSubscriberCount()
+                );
+            } else {
+                log.info(
+                        "Evento emitido correctamente: {}",
+                        notification.type()
+                );
+            }
+        });
     }
 
     public Sinks.Many<BarberQueue> getSink() {

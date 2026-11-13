@@ -23,7 +23,6 @@ public class FirebaseConfig {
 
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
-        log.info("Initializing FirebaseApp with provided credentials: {}", credentialsJson);
         GoogleCredentials credentials =
                 GoogleCredentials.fromStream(
                         new ByteArrayInputStream(

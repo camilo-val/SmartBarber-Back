@@ -1,3 +1,4 @@
+
 package com.smartbarber.infrastructure.entrypoint.reactiveweb.config;
 
 import com.smartbarber.domain.enums.RoleType;
@@ -23,95 +24,92 @@ public class SecurityConfig {
     private final JwtFilter filter;
 
     @Bean
-    public SecurityWebFilterChain securityWebFilterChain(
-            ServerHttpSecurity http
-    ) {
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
 
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
-
-                .cors(cors ->
-                        cors.configurationSource(corsConfigurationSource())
-                )
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 .authorizeExchange(exchange -> exchange
 
-                        // =========================================
-                        // RUTAS PÚBLICAS
-                        // =========================================
+                        // =================================================
+                        // RUTAS PUBLICAS
+                        // =================================================
 
-                        .pathMatchers(
-                                HttpMethod.POST,
+                        .pathMatchers(HttpMethod.POST,
                                 "/auth/verify",
                                 "/barber-service/onboarding",
                                 "/customer-service/onboarding",
                                 "/public/user-service/crear-usuario"
                         ).permitAll()
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        // Consultas públicas de barberías
+                        .pathMatchers(HttpMethod.GET,
                                 "/barber-service/name/**",
                                 "/barber-service/company-name/**",
-                                "/barber-service/id/**",
+                                "/barber-service/id/**"
+                        ).permitAll()
+
+                        // Consultas públicas de servicios
+                        .pathMatchers(HttpMethod.GET,
                                 "/services-service/name/**",
                                 "/services-service/id/**"
                         ).permitAll()
 
 
-                        // =========================================
-                        // BARBERÍA
-                        // =========================================
+                        // =================================================
+                        // BARBERIA
+                        // =================================================
 
-                        .pathMatchers(
-                                HttpMethod.POST,
+                        .pathMatchers(HttpMethod.POST,
                                 "/public/barber-service/create-barber"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        .pathMatchers(
-                                HttpMethod.GET,
-                                "/barber-service/document/**",
+                        .pathMatchers(HttpMethod.GET,
                                 "/barber-service/find-all"
+                        ).hasAnyRole(
+                                RoleType.CUSTOMER.name(),
+                                RoleType.BARBER.name(),
+                                RoleType.ADMIN.name()
+                        )
+
+                        .pathMatchers(HttpMethod.GET,
+                                "/barber-service/document/**"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        .pathMatchers(
-                                HttpMethod.PUT,
+                        .pathMatchers(HttpMethod.PUT,
                                 "/barber-service/update-barber/**"
                         ).hasRole(RoleType.ADMIN.name())
 
 
-                        // =========================================
+                        // =================================================
                         // CLIENTES
-                        // =========================================
+                        // =================================================
 
-                        .pathMatchers(
-                                HttpMethod.POST,
+                        .pathMatchers(HttpMethod.POST,
                                 "/public/customer-service/create-customer"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        .pathMatchers(
-                                HttpMethod.GET,
-                                "/customer-service/name/**",
-                                "/customer-service/document/**"
-                        ).hasRole(RoleType.ADMIN.name())
-
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/customer-service/id/**"
                         ).hasAnyRole(
                                 RoleType.CUSTOMER.name(),
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.PUT,
+                        .pathMatchers(HttpMethod.GET,
+                                "/customer-service/name/**",
+                                "/customer-service/document/**"
+                        ).hasRole(RoleType.ADMIN.name())
+
+                        .pathMatchers(HttpMethod.PUT,
                                 "/customer-service/update-customer/**"
                         ).hasAnyRole(
                                 RoleType.CUSTOMER.name(),
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.PATCH,
+                        .pathMatchers(HttpMethod.PATCH,
                                 "/customer-service/block-customer/**",
                                 "/customer-service/unblock-customer/**"
                         ).hasAnyRole(
@@ -120,53 +118,56 @@ public class SecurityConfig {
                         )
 
 
-                        // =========================================
+                        // =================================================
                         // EMPLEADOS
-                        // =========================================
+                        // =================================================
 
-                        .pathMatchers(
-                                HttpMethod.POST,
+                        .pathMatchers(HttpMethod.POST,
                                 "/public/employee-service/crear-empleado",
                                 "/public/employee-service/onboarding"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        .pathMatchers(
-                                HttpMethod.GET,
-                                "/public/employee-service/barbershop/**",
-                                "/employee-service/nombre/**",
-                                "/employee-service/id/**"
-                        ).hasAnyRole(
-                                RoleType.BARBER.name(),
-                                RoleType.ADMIN.name()
-                        )
+                        // CUSTOMER no tiene acceso a esta consulta.
+                                // Consultar empleados de una barbería
+                                .pathMatchers(HttpMethod.GET,
+                                        "/public/employee-service/barbershop/**"
+                                ).hasAnyRole(
+                                        RoleType.CUSTOMER.name(),
+                                        RoleType.BARBER.name(),
+                                        RoleType.ADMIN.name()
+                                )
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                                // Consultas de empleados
+                                .pathMatchers(HttpMethod.GET,
+                                        "/employee-service/nombre/**",
+                                        "/employee-service/id/**"
+                                ).hasAnyRole(
+                                        RoleType.BARBER.name(),
+                                        RoleType.ADMIN.name()
+                                )
+
+                        .pathMatchers(HttpMethod.GET,
                                 "/employee-service/documento/**"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        .pathMatchers(
-                                HttpMethod.PUT,
+                        .pathMatchers(HttpMethod.PUT,
                                 "/employee-service/actualizar-empleado/**"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        .pathMatchers(
-                                HttpMethod.PATCH,
+                        .pathMatchers(HttpMethod.PATCH,
                                 "/employee-service/block-employee/**"
                         ).hasRole(RoleType.ADMIN.name())
 
 
-                        // =========================================
+                        // =================================================
                         // SERVICIOS
-                        // =========================================
+                        // =================================================
 
-                        .pathMatchers(
-                                HttpMethod.POST,
+                        .pathMatchers(HttpMethod.POST,
                                 "/services-service/crear-servicio"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/services-service/barberia/**"
                         ).hasAnyRole(
                                 RoleType.CUSTOMER.name(),
@@ -174,31 +175,27 @@ public class SecurityConfig {
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.PUT,
+                        .pathMatchers(HttpMethod.PUT,
                                 "/services-service/actualizar-service/**"
                         ).hasRole(RoleType.ADMIN.name())
 
 
-                        // =========================================
+                        // =================================================
                         // HORARIOS
-                        // =========================================
+                        // =================================================
 
-                        .pathMatchers(
-                                HttpMethod.POST,
+                        .pathMatchers(HttpMethod.POST,
                                 "/schedule-service/crear-schedule"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/schedule-service/id/**"
                         ).hasAnyRole(
                                 RoleType.BARBER.name(),
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/schedule-service/empleado/**"
                         ).hasAnyRole(
                                 RoleType.CUSTOMER.name(),
@@ -206,23 +203,20 @@ public class SecurityConfig {
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.PUT,
+                        .pathMatchers(HttpMethod.PUT,
                                 "/schedule-service/actualizar-schedule/**"
                         ).hasRole(RoleType.ADMIN.name())
 
 
-                        // =========================================
+                        // =================================================
                         // RESERVAS
-                        // =========================================
+                        // =================================================
 
-                        .pathMatchers(
-                                HttpMethod.POST,
+                        .pathMatchers(HttpMethod.POST,
                                 "/reservation-service/create"
                         ).hasRole(RoleType.CUSTOMER.name())
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/reservation-service/employee/**",
                                 "/reservation-service/barber/**"
                         ).hasAnyRole(
@@ -230,16 +224,14 @@ public class SecurityConfig {
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/reservation-service/customer/**"
                         ).hasAnyRole(
                                 RoleType.CUSTOMER.name(),
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/reservation-service/*"
                         ).hasAnyRole(
                                 RoleType.CUSTOMER.name(),
@@ -247,9 +239,14 @@ public class SecurityConfig {
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.PATCH,
-                                "/reservation-service/*/confirm",
+                        .pathMatchers(HttpMethod.PATCH,
+                                "/reservation-service/*/confirm"
+                        ).hasAnyRole(
+                                RoleType.BARBER.name(),
+                                RoleType.ADMIN.name()
+                        )
+
+                        .pathMatchers(HttpMethod.PATCH,
                                 "/reservation-service/*/cancel"
                         ).hasAnyRole(
                                 RoleType.CUSTOMER.name(),
@@ -258,17 +255,15 @@ public class SecurityConfig {
                         )
 
 
-                        // =========================================
-                        // RESEÑAS
-                        // =========================================
+                        // =================================================
+                        // RESEÑAS DE RESERVAS
+                        // =================================================
 
-                        .pathMatchers(
-                                HttpMethod.POST,
+                        .pathMatchers(HttpMethod.POST,
                                 "/reservation-review-service/crear-resena-reserva"
                         ).hasRole(RoleType.CUSTOMER.name())
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/reservation-review-service/id/**",
                                 "/reservation-review-service/reserva/**"
                         ).hasAnyRole(
@@ -277,8 +272,7 @@ public class SecurityConfig {
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.PUT,
+                        .pathMatchers(HttpMethod.PUT,
                                 "/reservation-review-service/actualizar-resena-reserva/**"
                         ).hasAnyRole(
                                 RoleType.CUSTOMER.name(),
@@ -286,35 +280,31 @@ public class SecurityConfig {
                         )
 
 
-                        // =========================================
+                        // =================================================
                         // USUARIOS
-                        // =========================================
+                        // =================================================
 
-                        .pathMatchers(
-                                HttpMethod.GET,
-                                "/user-service/**"
+                        .pathMatchers(HttpMethod.GET,
+                                "/user-service/id/**"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        .pathMatchers(
-                                HttpMethod.PUT,
+                        .pathMatchers(HttpMethod.PUT,
                                 "/user-service/actualizar-usuario/**"
                         ).hasRole(RoleType.ADMIN.name())
 
 
-                        // =========================================
+                        // =================================================
                         // NOTIFICACIONES
-                        // =========================================
+                        // =================================================
 
-                        .pathMatchers(
-                                HttpMethod.POST,
+                        .pathMatchers(HttpMethod.POST,
                                 "/notification-service/crear-notificacion"
                         ).hasAnyRole(
                                 RoleType.BARBER.name(),
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/notification-service/id/**",
                                 "/notification-service/reserva/**"
                         ).hasAnyRole(
@@ -323,16 +313,14 @@ public class SecurityConfig {
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/notification-service/cliente/**"
                         ).hasAnyRole(
                                 RoleType.CUSTOMER.name(),
                                 RoleType.ADMIN.name()
                         )
 
-                        .pathMatchers(
-                                HttpMethod.PUT,
+                        .pathMatchers(HttpMethod.PUT,
                                 "/notification-service/actualizar-notificacion/**"
                         ).hasAnyRole(
                                 RoleType.BARBER.name(),
@@ -340,49 +328,32 @@ public class SecurityConfig {
                         )
 
 
-                        // =========================================
+                        // =================================================
                         // ROLES
-                        // =========================================
+                        // =================================================
 
                         .pathMatchers(
-                                HttpMethod.POST,
-                                "/role-service/create-role"
-                        ).hasRole(RoleType.ADMIN.name())
-
-                        .pathMatchers(
-                                HttpMethod.GET,
-                                "/role-service/id/**"
-                        ).hasRole(RoleType.ADMIN.name())
-
-                        .pathMatchers(
-                                HttpMethod.PUT,
-                                "/role-service/update-role/**"
+                                "/role-service/**"
                         ).hasRole(RoleType.ADMIN.name())
 
 
-                        // =========================================
+                        // =================================================
                         // SUSCRIPCIONES
-                        // =========================================
+                        // =================================================
 
                         .pathMatchers(
-                                HttpMethod.POST,
-                                "/subscription-service/create-subscription",
+                                "/subscription-service/**"
+                        ).hasRole(RoleType.ADMIN.name())
+
+                        .pathMatchers(HttpMethod.POST,
                                 "/subscription-barbershop-service/create"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        .pathMatchers(
-                                HttpMethod.GET,
-                                "/subscription-service/all",
-                                "/subscription-service/id/**"
-                        ).hasRole(RoleType.ADMIN.name())
-
-                        .pathMatchers(
-                                HttpMethod.PUT,
+                        .pathMatchers(HttpMethod.PUT,
                                 "/subscription-barbershop-service/renew"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/subscription-barbershop-service/actual-subscription/**",
                                 "/subscription-barbershop-service/subscription-history/**"
                         ).hasAnyRole(
@@ -391,25 +362,22 @@ public class SecurityConfig {
                         )
 
 
-                        // =========================================
+                        // =================================================
                         // COLA VIRTUAL
-                        // =========================================
+                        // =================================================
 
-                        .pathMatchers(
-                                HttpMethod.POST,
+                        .pathMatchers(HttpMethod.POST,
                                 "/api/v1/queue/join"
                         ).hasRole(RoleType.CUSTOMER.name())
 
-                        .pathMatchers(
-                                HttpMethod.POST,
+                        .pathMatchers(HttpMethod.POST,
                                 "/api/v1/queue/*/open",
                                 "/api/v1/queue/*/close",
                                 "/api/v1/queue/*/next",
                                 "/api/v1/queue/*/complete"
                         ).hasRole(RoleType.BARBER.name())
 
-                        .pathMatchers(
-                                HttpMethod.GET,
+                        .pathMatchers(HttpMethod.GET,
                                 "/api/v1/queue/**"
                         ).hasAnyRole(
                                 RoleType.CUSTOMER.name(),
@@ -418,18 +386,25 @@ public class SecurityConfig {
                         )
 
 
-                        // =========================================
-                        // CUALQUIER OTRA RUTA
-                        // =========================================
+                        // =================================================
+                        // WEBSOCKETS
+                        // =================================================
 
-                        .anyExchange().authenticated()
+                        .pathMatchers(
+                                "/ws/payment",
+                                "/ws/virtual-queue",
+                                "/ws/notifications"
+                        ).authenticated()
+
+
+                        // =================================================
+                        // BLOQUEAR CUALQUIER RUTA NO CONFIGURADA
+                        // =================================================
+
+                        .anyExchange().denyAll()
                 )
 
-                .addFilterAt(
-                        filter,
-                        SecurityWebFiltersOrder.AUTHENTICATION
-                )
-
+                .addFilterAt(filter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
     }
 
@@ -437,7 +412,6 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration configuration = new CorsConfiguration();
-
         configuration.setAllowedOrigins(List.of("*"));
         configuration.setAllowedMethods(List.of("*"));
         configuration.setAllowedHeaders(List.of("*"));
@@ -446,10 +420,7 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
 
-        source.registerCorsConfiguration(
-                "/**",
-                configuration
-        );
+        source.registerCorsConfiguration("/**", configuration);
 
         return source;
     }

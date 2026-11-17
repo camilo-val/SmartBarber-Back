@@ -65,6 +65,24 @@ public class User {
                 this.roleId
         );
     }
+
+    public User unblockUser(UUID id) {
+        if (id == null) {
+            throw new BusinessExceptions(
+                    UserMessageExceptions.INVALID_USER
+            );
+        }
+
+        return new User(
+                id,
+                this.firebaseId,
+                UserStatus.ACTIVE,
+                this.createAt,
+                Instant.now(),
+                this.roleId
+        );
+    }
+
     public static User rebuild(UUID id, String firebaseId, UserStatus status, Instant createAt, Instant updateAt, Short roleId){
         if (id == null || status == null){
             throw new BusinessExceptions(UserMessageExceptions.INVALID_USER);

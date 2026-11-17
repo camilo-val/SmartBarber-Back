@@ -21,7 +21,8 @@ public class CustomerRout {
                 .andRoute(RequestPredicates.GET(CUSTOMER_SERVICE + "/document/{document}"), customerHandler::findByCustomerByDocument)
                 .andRoute(RequestPredicates.GET(CUSTOMER_SERVICE + "/id/{id}"), customerHandler::findCustomerById)
                 .andRoute(RequestPredicates.PUT(CUSTOMER_SERVICE + "/update-customer/{id}"), customerHandler::updateCustomer)
-                .andRoute(RequestPredicates.PATCH(CUSTOMER_SERVICE + "/block-customer/{id}"),customerHandler::blockCustomer);
+                .andRoute(RequestPredicates.PATCH(CUSTOMER_SERVICE + "/block-customer/{id}"),customerHandler::blockCustomer)
+                .andRoute(RequestPredicates.PATCH(CUSTOMER_SERVICE + "/unblock-customer/{id}"), customerHandler::unblockCustomer);
     }
 }
   /*"/ws/virtual-queue/**",

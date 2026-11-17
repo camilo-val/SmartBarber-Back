@@ -31,47 +31,92 @@ AuthenticationUC {
     private final RolePort rolePort;
     private final SubscriptionBarbershopRepositoryPort subscriptionRepositoryPort;
 
-    public Mono<RoleType> authorization(String idToken){
-        System.out.println("Authentication.authorization: " + idToken);
-        return firebaseAuthPort.isValidToken(idToken)
-                .flatMap(isValid ->{
-                    if (Boolean.FALSE.equals(isValid)){
-                        return Mono.error(()->new BusinessExceptions(AuthorizationMessageExceptions.THE_TOKEN_IS_EXPIRED));
-                    }
-                            return Mono.zip(firebaseAuthPort.isExpiredToken(idToken),firebaseAuthPort.getUid(idToken) )
-                                    .map(tuple -> {
-                                        Boolean isExpiredToken = tuple.getT1();
-                                        String uidUser = tuple.getT2();
-                                        if(Boolean.FALSE.equals(isExpiredToken)){
-                                            return uidUser;
-                                        }
-                                        throw new  BusinessExceptions(AuthorizationMessageExceptions.THE_TOKEN_IS_EXPIRED);
-                                    }).flatMap(userPort::findByFirebaseId)
-                                    .flatMap(user ->
-                                        !user.getStatus().equals(UserStatus.ACTIVE)
-                                                ? Mono.error(()->new BusinessExceptions(AuthorizationMessageExceptions.THE_USER_IS_NOT_ACTIVE))
-                                                : rolePort.findById(user.getRoleId())
-                                    )
-                                    .doOnNext(role -> log.info("role: {}" ,role))
-                                    .map(Role::getRoleType)
-                                    .doOnNext(roleType -> log.info("roleType: {}" ,roleType));
-                        }
-                    );
+    public Mono<RoleType> authorization(String idToken) {
+        return authorization(idToken, false);
     }
 
-    public Mono<Authentication> authorizationSession (String idToken){
-        return authorization(idToken)
-                .doOnNext(roleType -> log.info("roleTypeSSS: {}" ,roleType))
-                .map(roleType -> roleType == RoleType.CUSTOMER)
-                .flatMap(isCustomer -> getUserUid(idToken)
-                        .flatMap(userPort::findByFirebaseId)
-                        .flatMap(user -> Boolean.TRUE.equals(isCustomer)
+    public Mono<RoleType> authorization(String idToken, boolean allowBlocked) {
+
+        return firebaseAuthPort.isValidToken(idToken)
+                .flatMap(isValid -> {
+                    if (Boolean.FALSE.equals(isValid)) {
+                        return Mono.error(() ->
+                                new BusinessExceptions(
+                                        AuthorizationMessageExceptions.THE_TOKEN_IS_EXPIRED
+                                )
+                        );
+                    }
+
+                    return Mono.zip(
+                                    firebaseAuthPort.isExpiredToken(idToken),
+                                    firebaseAuthPort.getUid(idToken)
+                            ).map(tuple -> {
+                                Boolean isExpiredToken = tuple.getT1();
+                                String uidUser = tuple.getT2();
+
+                                if (Boolean.FALSE.equals(isExpiredToken)) {
+                                    return uidUser;
+                                }
+
+                                throw new BusinessExceptions(
+                                        AuthorizationMessageExceptions.THE_TOKEN_IS_EXPIRED
+                                );
+                            }).flatMap(userPort::findByFirebaseId)
+                            .flatMap(user -> {
+
+                                boolean isActive = user.getStatus() == UserStatus.ACTIVE;
+                                boolean isBlockedAndAllowed =
+                                        allowBlocked && user.getStatus() == UserStatus.BLOCKED;
+
+                                if (!isActive && !isBlockedAndAllowed) {
+                                    return Mono.error(() ->
+                                            new BusinessExceptions(
+                                                    AuthorizationMessageExceptions.THE_USER_IS_NOT_ACTIVE
+                                            )
+                                    );
+                                }
+
+                                return rolePort.findById(user.getRoleId());
+                            })
+                            .map(Role::getRoleType);
+                });
+    }
+
+    public Mono<Authentication> authorizationSession(String idToken) {
+        return authorizationSession(idToken, false);
+    }
+
+    public Mono<Authentication> authorizationSessionForUnblock(String idToken) {
+        return authorizationSession(idToken, true);
+    }
+
+    private Mono<Authentication> authorizationSession(
+            String idToken,
+            boolean allowBlocked
+    ) {
+        return authorization(idToken, allowBlocked)
+                .flatMap(roleType -> {
+
+                    if (allowBlocked && roleType != RoleType.CUSTOMER) {
+                        return Mono.error(() ->
+                                new BusinessExceptions(
+                                        AuthorizationMessageExceptions.FORBIDDEN
+                                )
+                        );
+                    }
+
+                    return getUserUid(idToken)
+                            .flatMap(userPort::findByFirebaseId)
+                            .flatMap(user -> roleType == RoleType.CUSTOMER
                                     ? buildCustomerResponse(user)
                                     : buildEmployeeResponse(user)
+                            );
+                })
+                .switchIfEmpty(Mono.error(() ->
+                        new BusinessExceptions(
+                                AuthorizationMessageExceptions.INVALID_DATA
                         )
-
-                ).switchIfEmpty(Mono.error(()->new BusinessExceptions(AuthorizationMessageExceptions.INVALID_DATA)))
-                .doOnError(error -> new BusinessExceptions(AuthorizationMessageExceptions.FORBIDDEN));
+                ));
     }
     public Mono<String> getUserUid(String idToken){
         System.out.println("Authentication.getUserUid: " + idToken);

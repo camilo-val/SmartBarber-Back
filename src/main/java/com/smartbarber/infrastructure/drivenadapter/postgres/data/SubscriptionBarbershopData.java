@@ -31,7 +31,7 @@ public interface SubscriptionBarbershopData extends ReactiveCrudRepository<Subsc
             and estado in ('ACTIVE')
             """)
     Mono<Boolean> countActiveSubscriptionsByBarberId(@Param("barberId") UUID barberId);
-
+git statusgitcd
     @Query("""
             SELECT * FROM suscripcion_barberia
             WHERE renovacion_automatica = :automaticRenew

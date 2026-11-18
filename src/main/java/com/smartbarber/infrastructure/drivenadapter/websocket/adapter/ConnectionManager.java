@@ -1,6 +1,7 @@
 package com.smartbarber.infrastructure.drivenadapter.websocket.adapter;
 
 import com.smartbarber.application.command.in.SubscriptionBarbershopCommand;
+import com.smartbarber.application.command.in.PaymentResponse;
 import com.smartbarber.application.command.in.TransactionCommand;
 import com.smartbarber.domain.port.event.MessageNotificationPort;
 import com.smartbarber.infrastructure.drivenadapter.websocket.config.WebSocketPaymentManager;
@@ -47,7 +48,7 @@ public class ConnectionManager implements MessageNotificationPort{
                             .flatMap(payload -> {
                                 TransactionCommand transaction = objectMapper.readValue(payload.getPayloadAsText(), TransactionCommand.class);
                                      return gatewayResponseHandler.handle(transaction.status(), transaction.orderId())
-                                             .doOnSuccess(unused -> RsManager.completeResponse(transaction.orderId(), transaction));
+                                             .doOnSuccess(unused -> RsManager.completeResponse(PaymentResponse.from(transaction)));
                             })
                             .doFinally( signalType -> connectionPaymentManager.removeSession(userId))
                             .then();
@@ -104,6 +105,8 @@ public class ConnectionManager implements MessageNotificationPort{
                                                             TransactionCommand.class
                                                     );
 
+                                            RsManager.responseReceived(transaction.orderId());
+
                                             log.info(
                                                     "TRANSACTION RECEIVED {}",
                                                     transaction.orderId()
@@ -142,8 +145,7 @@ public class ConnectionManager implements MessageNotificationPort{
                                                     )
                                                     .doOnSuccess(v ->
                                                             RsManager.completeResponse(
-                                                                    transaction.orderId(),
-                                                                    transaction
+                                                            PaymentResponse.from(transaction)
                                                             )
                                                     );
                                         })

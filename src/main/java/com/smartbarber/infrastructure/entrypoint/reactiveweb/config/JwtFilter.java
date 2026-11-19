@@ -16,6 +16,8 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
+import org.springframework.http.HttpMethod;
+import com.smartbarber.domain.exceptions.BusinessExceptions;
 
 import java.util.List;
 
@@ -38,34 +40,6 @@ public class JwtFilter implements WebFilter {
         String path = exchange.getRequest()
                 .getPath()
                 .value();
-
-        log.info("========== REQUEST RECIBIDA ==========");
-        log.info("[REQUEST] Método: {}", exchange.getRequest().getMethod());
-        log.info("[REQUEST] Ruta: {}", path);
-        log.info("[REQUEST] Upgrade: {}",
-                exchange.getRequest().getHeaders().getUpgrade());
-        log.info("=======================================");
-
-        log.info("[JWT] Ruta solicitada: {}", path);
-        log.info(
-                "[JWT] Authorization presente: {}",
-                exchange.getRequest()
-                        .getHeaders()
-                        .getFirst(HttpHeaders.AUTHORIZATION) != null
-        );
-        log.info(
-                "[JWT] Parámetro token presente: {}",
-                exchange.getRequest()
-                        .getQueryParams()
-                        .getFirst("token") != null
-        );
-
-        log.info(
-                "[JWT] Parámetro token presente: {}",
-                exchange.getRequest()
-                        .getQueryParams()
-                        .containsKey("token")
-        );
 
         // Las rutas públicas y los registros (onboarding) no necesitan sesión:
         // en un registro la cuenta de Firebase todavía no existe en SmartBarber.
@@ -148,8 +122,34 @@ public class JwtFilter implements WebFilter {
                                             .withAuthentication(authentication)
                             );
                 });*/
-        return validateTokenUseCase.authorizationSession(authorization)
+        boolean isUnblockCustomer =
+                HttpMethod.PATCH.equals(exchange.getRequest().getMethod())
+                        && path.matches(
+                        "^/customer-service/unblock-customer/[0-9a-fA-F-]{36}$"
+                );
 
+        final String finalAuthorization = authorization;
+
+// Seleccionar el tipo de autenticación según el endpoint
+
+        Mono<com.smartbarber.domain.model.authentication.Authentication> authenticationSession;
+
+        if (isUnblockCustomer) {
+
+            authenticationSession = validateTokenUseCase
+                    .authorizationSessionForUnblock(finalAuthorization)
+                    .onErrorResume(
+                            BusinessExceptions.class,
+                            error -> validateTokenUseCase.authorizationSession(finalAuthorization)
+                    );
+
+        } else {
+
+            authenticationSession = validateTokenUseCase
+                    .authorizationSession(finalAuthorization);
+        }
+
+        return authenticationSession
                 .flatMap(authData -> {
 
                     String role = switch (authData.getUser().getRoleId()) {

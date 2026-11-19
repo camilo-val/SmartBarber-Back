@@ -18,7 +18,7 @@ public class RenewAutomaticSubscription {
     private final FindSubscriptionBarberUC findSubscriptionBarberUC;
     private final RenewSubscriptionMapper renewSubscriptionMapper;
 
-    @Scheduled(cron = "0 */3 * * * *")
+    //@Scheduled(cron = "0 */3 * * * *")
     public void renewAutomaticSubscriptions() {
         Instant initialDate = Instant.now();
         Instant finalDate = Instant.now().plus(Duration.ofMinutes(3));
@@ -41,7 +41,7 @@ public class RenewAutomaticSubscription {
                 });
     }
 
-    @Scheduled(cron = "30 */3 * * * *")
+    //@Scheduled(cron = "30 */3 * * * *")
     public void expiredSubscriptions() {
         System.out.println("Entreeee cancel");
         findSubscriptionBarberUC.findExpiredSubscriptions()

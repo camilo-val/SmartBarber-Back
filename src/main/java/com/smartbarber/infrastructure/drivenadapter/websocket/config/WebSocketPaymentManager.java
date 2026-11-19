@@ -3,9 +3,7 @@ package com.smartbarber.infrastructure.drivenadapter.websocket.config;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketSession;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.Sinks;
 
 import java.util.Map;
 import java.util.UUID;
@@ -31,7 +29,7 @@ public class WebSocketPaymentManager {
         WebSocketSession session = sessions.get(orderId);
         if(session==null){
             log.warn("No active websocket session for userId {}", orderId);
-            return Mono.empty();
+            return Mono.error(new IllegalStateException("No active Payment Service WebSocket session"));
         }
         return session.send(Mono.just(session.textMessage(message)));
     }

@@ -2,6 +2,7 @@ package com.smartbarber.infrastructure.entrypoint.reactiveweb.handler.customer;
 
 import com.smartbarber.application.usecase.athentication.AuthenticationUC;
 import com.smartbarber.application.usecase.customer.BlockCustomerUC;
+import com.smartbarber.application.usecase.customer.UnblockCustomerUC;
 import com.smartbarber.application.usecase.customer.UpdateCustomerUC;
 import com.smartbarber.application.usecase.customer.CreateCustomerUC;
 import com.smartbarber.application.usecase.customer.SearchCustomerUC;
@@ -34,6 +35,7 @@ public class CustomerHandler {
     private final AuthenticationUC authenticationUc;
     private final CustomerOnboardingEntryMapper  customerOnboardingEntryMapper;
     private final BlockCustomerUC blockCustomerUC;
+    private final UnblockCustomerUC unblockCustomerUC;
 
     public Mono<ServerResponse> createCustomer(ServerRequest request){
         return request.bodyToMono(CustomerRqDto.class)
@@ -90,4 +92,12 @@ public class CustomerHandler {
         return blockCustomerUC.blockCustomer(UUID.fromString(request.pathVariable("id")))
                 .then(ServerResponse.accepted().build());
     }
+
+    public Mono<ServerResponse> unblockCustomer(ServerRequest request) {
+
+        return unblockCustomerUC
+                .unblockCustomer(UUID.fromString(request.pathVariable("id")))
+                .then(ServerResponse.accepted().build());
+    }
+
 }

@@ -52,7 +52,7 @@ public class UserAdapter implements UserPort {
 
     @Override
     public Mono<User> findByFirebaseId(String firebaseId) {
-        System.out.println("UserAdapter.findByFirebaseId: " + firebaseId);
+        //System.out.println("UserAdapter.findByFirebaseId: " + firebaseId);
         return userData.findByFirebaseId(firebaseId)
                 .doOnNext(e -> log.info("Data encontrada {}", e.toString()))
                 .switchIfEmpty(Mono.error(new RuntimeException("User not found with firebaseId: " + firebaseId)))

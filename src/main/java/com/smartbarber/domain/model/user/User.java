@@ -83,6 +83,27 @@ public class User {
         );
     }
 
+    /** Usuario con el acceso bloqueado: no puede iniciar sesión ni usar el API. */
+    public User block() {
+        return withStatus(UserStatus.BLOCKED);
+    }
+
+    /** Usuario con el acceso habilitado de nuevo. */
+    public User activate() {
+        return withStatus(UserStatus.ACTIVE);
+    }
+
+    public boolean isBlocked() {
+        return status == UserStatus.BLOCKED;
+    }
+
+    private User withStatus(UserStatus newStatus) {
+        if (id == null) {
+            throw new BusinessExceptions(UserMessageExceptions.INVALID_USER);
+        }
+        return new User(id, firebaseId, newStatus, createAt, Instant.now(), roleId);
+    }
+
     public static User rebuild(UUID id, String firebaseId, UserStatus status, Instant createAt, Instant updateAt, Short roleId){
         if (id == null || status == null){
             throw new BusinessExceptions(UserMessageExceptions.INVALID_USER);

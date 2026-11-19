@@ -7,8 +7,10 @@ import com.smartbarber.infrastructure.drivenadapter.postgres.mapper.UserAdapterM
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Collection;
 import java.util.UUID;
 
 
@@ -57,6 +59,13 @@ public class UserAdapter implements UserPort {
                 .doOnNext(e -> log.info("Data encontrada {}", e.toString()))
                 .switchIfEmpty(Mono.error(new RuntimeException("User not found with firebaseId: " + firebaseId)))
         .map(mapper::toDomain);
+    }
+
+    @Override
+    public Flux<User> findAllByIds(Collection<UUID> ids) {
+        return ids == null || ids.isEmpty()
+                ? Flux.empty()
+                : userData.findAllById(ids).map(mapper::toDomain);
     }
 
 }

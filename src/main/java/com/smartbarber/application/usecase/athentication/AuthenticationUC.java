@@ -119,7 +119,6 @@ AuthenticationUC {
                 ));
     }
     public Mono<String> getUserUid(String idToken){
-        System.out.println("Authentication.getUserUid: " + idToken);
         return firebaseAuthPort.isValidToken(idToken).
                 flatMap(mapClaims -> firebaseAuthPort.getUid(idToken));
     }

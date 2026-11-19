@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static reactor.netty.http.HttpConnectionLiveness.log;
 
 class CreateTransactionUCResponseTest {
     @Test
@@ -132,6 +133,7 @@ class CreateTransactionUCResponseTest {
 
         @Override
         public WaiterRegistration registerWaiter(UUID orderId) {
+            log.info("REGISTER_WAITER {}", orderId);
             order.add("register");
             registration = new WaiterRegistration(orderId, UUID.randomUUID());
             return registration;

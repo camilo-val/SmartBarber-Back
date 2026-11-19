@@ -110,6 +110,7 @@ public class ResponseManager implements MessageResponsePort {
 
     @Override
     public Mono<PaymentResponse> waitForResponse(UUID orderId) {
+        log.info("WAIT_FOR_RESPONSE {}", orderId);
         return Mono.defer(() -> {
             Entry entry = pending.get(orderId);
             if (entry == null) return Mono.error(new TechnicalExceptions(TechnicalMessageExceptions.SERVICE_UNAVAILABLE));
@@ -144,8 +145,15 @@ public class ResponseManager implements MessageResponsePort {
 
     @Override
     public void completeResponse(PaymentResponse response) {
+        log.info("COMPLETE_RESPONSE {}", response.orderId());
+
         Entry entry = pending.get(response.orderId());
-        if (entry == null) return;
+
+        if (entry == null) {
+            log.error("NO WAITER FOUND {}", response.orderId());
+            return;
+        }
+
         synchronized (entry) {
             if (entry.state.get() != State.WAITING || entry.response != null) return;
             entry.response = response;
@@ -194,6 +202,12 @@ public class ResponseManager implements MessageResponsePort {
     }
 
     private void emit(Entry entry, UUID orderId) {
+        log.info(
+                "EMIT orderId={}, publicationSucceeded={}, response={}",
+                orderId,
+                entry.publicationSucceeded,
+                entry.response != null
+        );
         if (entry.emitted || entry.response == null || entry.state.get() != State.COMPLETED) return;
         entry.emitted = true;
         if (entry.sink.tryEmitValue(entry.response).isFailure()) {

@@ -38,6 +38,10 @@ public class SubscriptionBarbershopWsHandler implements WebSocketHandler {
 
         UUID orderId = extractOrderId(session);
         String token = extractIdToken(session);
+        log.info(
+                "SUBSCRIPTION WS CONNECTED orderId={}",
+                orderId
+        );
         connectionManager.registerSession(orderId, session);
         log.info("JWTAAAA: {}", token);
        return  authenticationUC.authorizationSession(TYPE + " " + token)
@@ -53,7 +57,13 @@ public class SubscriptionBarbershopWsHandler implements WebSocketHandler {
                                                .build()
                                        )
                        ).map(message -> session.textMessage(objectMapper.writeValueAsString(message)))
-       ));
+       )).doFinally(signal ->
+                       log.warn(
+                               "SUBSCRIPTION WS CLOSED orderId={} signal={}",
+                               orderId,
+                               signal
+                       )
+               );
     }
 
     private UUID extractOrderId(WebSocketSession session) {

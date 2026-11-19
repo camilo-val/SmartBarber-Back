@@ -154,8 +154,14 @@ public class SecurityConfig {
                                 "/employee-service/actualizar-empleado/**"
                         ).hasRole(RoleType.ADMIN.name())
 
+                        // Acceso del equipo: el administrador bloquea o desbloquea barberos.
+                        .pathMatchers(HttpMethod.GET,
+                                "/employee-service/team"
+                        ).hasRole(RoleType.ADMIN.name())
+
                         .pathMatchers(HttpMethod.PATCH,
-                                "/employee-service/block-employee/**"
+                                "/employee-service/block-employee/**",
+                                "/employee-service/unblock-employee/**"
                         ).hasRole(RoleType.ADMIN.name())
 
 
@@ -346,6 +352,15 @@ public class SecurityConfig {
 
                         .pathMatchers(HttpMethod.DELETE,
                                 "/non-working-day-service/*"
+                        ).hasRole(RoleType.ADMIN.name())
+
+
+                        // =================================================
+                        // ESTADISTICAS
+                        // =================================================
+
+                        .pathMatchers(HttpMethod.GET,
+                                "/statistics-service/**"
                         ).hasRole(RoleType.ADMIN.name())
 
 

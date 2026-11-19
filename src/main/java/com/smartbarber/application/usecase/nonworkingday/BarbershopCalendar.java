@@ -20,6 +20,10 @@ public class BarbershopCalendar {
         return LocalDate.now(ZONE);
     }
 
+    public Instant now() {
+        return Instant.now();
+    }
+
     public LocalDate dateOf(Instant instant) {
         return LocalDate.ofInstant(instant, ZONE);
     }

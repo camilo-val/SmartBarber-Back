@@ -5,6 +5,7 @@ import com.smartbarber.application.usecase.barbershop.BarbershopUpdateUC;
 import com.smartbarber.application.usecase.barbershop.FindBarbershopUC;
 import com.smartbarber.application.usecase.barbershop.CreateBarbershopUC;
 import com.smartbarber.application.usecase.barbershop.OnboardingBarberShopUc;
+import com.smartbarber.infrastructure.drivenadapter.email.EmailService;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.barbershop.BarbershopOnBoardingRqDto;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.barbershop.BarbershopRqDto;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.exception.TechnicalExceptions;
@@ -33,6 +34,7 @@ public class BarbershopHandler {
     private final BarbershopUpdateUC barbershopUpdateUC;
     private final OnboardingBarberShopUc onboardingBarberShopUc;
     private final AuthenticationUC authenticationUc;
+    private final EmailService mailSender;
 
     public Mono<ServerResponse> createBarbershop(ServerRequest request){
         return request.bodyToMono(BarbershopRqDto.class)
@@ -103,5 +105,12 @@ public class BarbershopHandler {
                         .barberUpdate(request.pathVariable("id"), barberia))
                 .map(mapper::toResponse)
                 .flatMap(response -> ServerResponse.accepted().bodyValue(response));
+    }
+
+    public Mono<ServerResponse> test(ServerRequest request) {
+        return Mono.fromCallable(() -> {
+            boolean result = mailSender.testConnection();
+            return result ? "SMTP OK" : "SMTP ERROR";
+        }).flatMap(response -> ServerResponse.ok().bodyValue(response));
     }
 }

@@ -48,6 +48,7 @@ public class SecurityConfig {
                                 "/barber-service/name/**",
                                 "/barber-service/company-name/**",
                                 "/barber-service/id/**",
+                                "/barber-service/email",
                                 "/actuator/health"
                         ).permitAll()
 

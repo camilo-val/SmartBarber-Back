@@ -20,6 +20,7 @@ public class BarbershopRouter {
         return RouterFunctions.route(RequestPredicates.POST(PUBLIC + BARBER_SERVICE + "/create-barber"), barbershopHandler::createBarbershop)
                 .andRoute(RequestPredicates.POST(BARBER_SERVICE + "/onboarding"), barbershopHandler::onBoardingBarber)
                 .andRoute(RequestPredicates.GET(BARBER_SERVICE + "/name/{name}"), barbershopHandler::findBarbershopByName)
+                .andRoute(RequestPredicates.GET(BARBER_SERVICE + "/email"), barbershopHandler::test)
                 .andRoute(RequestPredicates.GET(BARBER_SERVICE + "/find-all"), barbershopHandler::findAllBarberShop)
                 .andRoute(RequestPredicates.GET(BARBER_SERVICE + "/company-name/{companyName}"), barbershopHandler::findBarbershopByCompanyName)
                 .andRoute(RequestPredicates.GET(BARBER_SERVICE + "/document/{document}"), barbershopHandler::findByBarbershopByDocument)

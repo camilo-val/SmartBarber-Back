@@ -1,6 +1,5 @@
 package com.smartbarber.application.usecase.transaction;
 
-import com.smartbarber.application.command.in.TransactionCommand;
 import com.smartbarber.domain.model.transaction.Transaction;
 import com.smartbarber.domain.port.event.MessageResponsePort;
 import com.smartbarber.domain.port.transaction.TransactionRepositoryPort;

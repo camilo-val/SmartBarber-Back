@@ -1,10 +1,11 @@
 package com.smartbarber.application.usecase.employee;
 
 import com.smartbarber.application.command.in.employee.EmployeeCommand;
-import com.smartbarber.domain.port.EmployeePort;
+import com.smartbarber.application.usecase.security.AuthorizationAccessRules;
 import com.smartbarber.domain.model.employee.Employee;
+import com.smartbarber.domain.port.authentication.CurrentAuthenticationPort;
+import com.smartbarber.domain.port.EmployeePort;
 import lombok.AllArgsConstructor;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -13,28 +14,47 @@ import java.util.UUID;
 @Component
 @AllArgsConstructor
 public class UpdateEmployeeUC {
+
     private final EmployeePort employeePort;
+    private final CurrentAuthenticationPort currentAuthenticationPort;
 
-    public Mono<Employee> employeeUpdate(String id, EmployeeCommand employee){
+    public Mono<Employee> employeeUpdate(
+            String id,
+            EmployeeCommand employee
+    ) {
 
-        ReactiveSecurityContextHolder.getContext()
-                .map(securityContext -> securityContext.getAuthentication().getPrincipal())
-                .map(principal -> {
-                    System.out.println("Principal: " + principal);
-                    return principal;
+        UUID employeeId = UUID.fromString(id);
+
+        return Mono.zip(
+                        currentAuthenticationPort.getCurrentAuthentication(),
+                        employeePort.findById(employeeId)
+                )
+                .doOnNext(tuple ->
+                        AuthorizationAccessRules.validateEmployeeScopedAccess(
+                                tuple.getT1(),
+                                tuple.getT2()
+                        )
+                )
+                .map(tuple -> {
+
+                    Employee employeeDB = tuple.getT2();
+
+                    return employeeDB.update(
+                            employeeId,
+                            employeeDB.getBarberiaId(), // Mantiene el tenant original
+                            employee.document(),
+                            employee.documentType(),
+                            employee.name(),
+                            employee.cell(),
+                            employee.email(),
+                            employee.specialty()
+                    );
                 })
-                .subscribe();
-
-        return employeePort.findById(UUID.fromString(id))
-                .map( employeeDB -> employeeDB.update(
-                                UUID.fromString(id),
-                                employee.barberiaId(),
-                                employee.document(),
-                                employee.documentType(),
-                                employee.name(),
-                                employee.cell(),
-                                employee.email(),
-                                employee.specialty()))
-                .flatMap( employeeUpdate -> employeePort.update(UUID.fromString(id), employeeUpdate));
+                .flatMap(updatedEmployee ->
+                        employeePort.update(
+                                employeeId,
+                                updatedEmployee
+                        )
+                );
     }
 }

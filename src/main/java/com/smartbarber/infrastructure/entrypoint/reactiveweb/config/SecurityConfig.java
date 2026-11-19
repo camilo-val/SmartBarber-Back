@@ -154,8 +154,14 @@ public class SecurityConfig {
                                 "/employee-service/actualizar-empleado/**"
                         ).hasRole(RoleType.ADMIN.name())
 
+                        // Acceso del equipo: el administrador bloquea o desbloquea barberos.
+                        .pathMatchers(HttpMethod.GET,
+                                "/employee-service/team"
+                        ).hasRole(RoleType.ADMIN.name())
+
                         .pathMatchers(HttpMethod.PATCH,
-                                "/employee-service/block-employee/**"
+                                "/employee-service/block-employee/**",
+                                "/employee-service/unblock-employee/**"
                         ).hasRole(RoleType.ADMIN.name())
 
 
@@ -326,6 +332,36 @@ public class SecurityConfig {
                                 RoleType.BARBER.name(),
                                 RoleType.ADMIN.name()
                         )
+
+
+                        // =================================================
+                        // DIAS NO LABORABLES
+                        // =================================================
+
+                        .pathMatchers(HttpMethod.GET,
+                                "/non-working-day-service/barbershop/*"
+                        ).hasAnyRole(
+                                RoleType.CUSTOMER.name(),
+                                RoleType.BARBER.name(),
+                                RoleType.ADMIN.name()
+                        )
+
+                        .pathMatchers(HttpMethod.POST,
+                                "/non-working-day-service"
+                        ).hasRole(RoleType.ADMIN.name())
+
+                        .pathMatchers(HttpMethod.DELETE,
+                                "/non-working-day-service/*"
+                        ).hasRole(RoleType.ADMIN.name())
+
+
+                        // =================================================
+                        // ESTADISTICAS
+                        // =================================================
+
+                        .pathMatchers(HttpMethod.GET,
+                                "/statistics-service/**"
+                        ).hasRole(RoleType.ADMIN.name())
 
 
                         // =================================================

@@ -12,6 +12,7 @@ import com.smartbarber.domain.port.EmployeePort;
 import com.smartbarber.domain.exceptions.employee.MessageExceptionsEmployee;
 import com.smartbarber.domain.model.employee.Employee;
 import com.smartbarber.domain.port.UserPort;
+import com.smartbarber.domain.port.authentication.CurrentAuthenticationPort;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.reactive.TransactionalOperator;
@@ -26,6 +27,7 @@ public class CreateEmployeeUC {
     private final TransactionalOperator transactionalOperator;
     private final UserMapper userMapper;
     private final EmployeeMapper employeeMapper;
+    private final CurrentAuthenticationPort currentAuthenticationPort;
 
     public Mono<Employee> createEmployee(EmployeeCommand employee){
         return Mono.when(
@@ -49,7 +51,8 @@ public class CreateEmployeeUC {
 
     public Mono<EmployeeOnbording> createEmployeeOnboarding(EmployeeOnboardingCommand employee){
         System.out.println("Creando empleado : " + employee);
-        return Mono.when(
+        return validateAdminOfBarbershop(employee.employee().barberiaId())
+                .then(Mono.when(
                         validateUser(employee.user().firebaseId()),
                         validateEmployee(employee.employee().document())
                 )
@@ -69,7 +72,19 @@ public class CreateEmployeeUC {
                                 )
 
                         )
-                ).as(transactionalOperator::transactional);
+                )).as(transactionalOperator::transactional);
+    }
+
+    private Mono<Void> validateAdminOfBarbershop(java.util.UUID barbershopId) {
+        return currentAuthenticationPort.getCurrentAuthentication()
+                .filter(auth -> auth.getUser() != null
+                        && auth.getUser().getRoleId() != null
+                        && auth.getUser().getRoleId() == com.smartbarber.domain.enums.RoleType.ADMIN.getId()
+                        && auth.getEmployee() != null
+                        && barbershopId != null
+                        && barbershopId.equals(auth.getEmployee().getBarberiaId()))
+                .switchIfEmpty(Mono.error(() -> new BusinessExceptions(UserMessageExceptions.THE_USER_DOES_NOT_HAVE_PERMISSION)))
+                .then();
     }
 
     private Mono<Void> validateUser(String uid){

@@ -31,7 +31,12 @@ logging:
 
 payment:
   key: ${PAYMENT_KEY}
+  # Legacy response timeout remains the fallback for existing deployments.
   timeout: ${PAYMENT_TIMEOUT:30}
+  # Operational defaults: 10s to send, 30s to receive a result, 300s to retain it for a reconnect.
+  publication-timeout: ${PAYMENT_PUBLICATION_TIMEOUT:10}
+  response-timeout: ${PAYMENT_RESPONSE_TIMEOUT:${PAYMENT_TIMEOUT:30}}
+  response-retention-ttl: ${PAYMENT_RESPONSE_RETENTION_TTL:300}
 
 server:
   port: ${PORT:8080}

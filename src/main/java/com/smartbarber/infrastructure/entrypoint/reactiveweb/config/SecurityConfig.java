@@ -47,7 +47,8 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.GET,
                                 "/barber-service/name/**",
                                 "/barber-service/company-name/**",
-                                "/barber-service/id/**"
+                                "/barber-service/id/**",
+                                "/actuator/health"
                         ).permitAll()
 
                         // Consultas públicas de servicios

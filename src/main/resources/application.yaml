@@ -46,3 +46,9 @@ firebase:
 
 service:
   payment-service: ${PAYMENT_SERVICE_URL:http://localhost:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

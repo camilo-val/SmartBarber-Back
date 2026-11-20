@@ -39,4 +39,9 @@ public class ServiceReservationAdapter implements ServiceReservationPort {
     public Mono<Boolean> existsByReservationIdAndServiceId(UUID reservationId, Integer serviceId) {
         return serviceReservationData.existsByReservationIdAndServiceId(reservationId, serviceId);
     }
+
+    @Override
+    public Mono<Boolean> existsByServiceId(Integer serviceId) {
+        return serviceReservationData.existsByServiceId(serviceId);
+    }
 }

@@ -115,20 +115,10 @@ public class BarbershopHandler {
                         "Correo enviado desde Render"
                 )
                 .then(ServerResponse.ok().bodyValue("OK"))
+                // El detalle técnico va al log; al cliente solo un resultado genérico.
                 .onErrorResume(ex -> {
-
-                    Throwable cause = ex;
-
-                    while (cause.getCause() != null) {
-                        cause = cause.getCause();
-                    }
-
-                    return ServerResponse.ok().bodyValue(
-                            "ROOT ERROR -> "
-                                    + cause.getClass().getName()
-                                    + " : "
-                                    + cause.getMessage()
-                    );
+                    log.error("Falló la prueba de envío de correo", ex);
+                    return ServerResponse.status(502).bodyValue("SMTP ERROR");
                 });
     }
 }

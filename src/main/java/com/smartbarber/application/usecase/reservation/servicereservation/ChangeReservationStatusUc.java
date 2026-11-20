@@ -5,6 +5,10 @@ import com.smartbarber.domain.exceptions.reservation.ReservationMessageException
 import com.smartbarber.domain.model.customer.Customer;
 import com.smartbarber.domain.model.notification.Notification;
 import com.smartbarber.domain.model.reservation.Reservation;
+import com.smartbarber.application.usecase.queue.QueueBroadcastService;
+import com.smartbarber.domain.enums.NotificationType;
+import com.smartbarber.domain.enums.ReservationStatus;
+import com.smartbarber.domain.enums.ReservationType;
 import com.smartbarber.application.usecase.security.AuthorizationAccessRules;
 import com.smartbarber.domain.port.authentication.CurrentAuthenticationPort;
 import com.smartbarber.domain.model.authentication.Authentication;
@@ -36,7 +40,8 @@ public class ChangeReservationStatusUc {
     private final CustomerPort customerPort;
     private final NotificationPort notificationPort;
         private final EmailService emailService;
-        private final CurrentAuthenticationPort currentAuthenticationPort;
+            private final CurrentAuthenticationPort currentAuthenticationPort;
+    private final QueueBroadcastService queueBroadcastService;
 
     /** Anticipación mínima con que el cliente puede cancelar o reprogramar. */
     @Value("${reservation.customer-change-notice-minutes:60}")
@@ -132,6 +137,13 @@ public class ChangeReservationStatusUc {
                             return statusTransition.apply(user, reservation);
                         }))
                 .flatMap(reservationRepositoryPort::save)
+                // Si era un turno de la cola virtual, la cola se actualiza para todos.
+                .flatMap(reservation -> reservation.getReservationType() == ReservationType.VIRTUAL_QUEUE
+                        && reservation.getStatus() == ReservationStatus.CANCELLED
+                        ? queueBroadcastService.publish(reservation.getEmployeeId(), NotificationType.QUEUE_CUSTOMER_LEFT)
+                                .onErrorResume(error -> Mono.empty())
+                                .thenReturn(reservation)
+                        : Mono.just(reservation))
                 .flatMap(reservation -> message == null
                         ? Mono.just(reservation)
                         : createNotificationAndSendEmail(

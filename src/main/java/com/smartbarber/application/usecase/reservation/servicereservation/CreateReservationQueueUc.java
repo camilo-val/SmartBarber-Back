@@ -1,5 +1,6 @@
 package com.smartbarber.application.usecase.reservation.servicereservation;
 
+import com.smartbarber.domain.exceptions.barberqueue.BarberQueueMessageExceptions;
 import com.smartbarber.application.usecase.employee.FindBookableBarbersUC;
 
 import com.smartbarber.application.command.in.reservation.ReservationCommand;
@@ -66,9 +67,8 @@ public class CreateReservationQueueUc {
                 .then(findNonWorkingDaysUC
                         .ensureOpen(command.barbershopId(), barbershopCalendar.today()))
                 .then(barberQueuePort.findByEmployeeIdForUpdate(command.employeeId()))
-                .switchIfEmpty(Mono.error(new IllegalStateException(
-                        "El barbero no tiene una cola configurada. Debe abrirla primero."
-                )))
+                .switchIfEmpty(Mono.error(new BusinessExceptions(
+                                BarberQueueMessageExceptions.THE_QUEUE_BABER_DOES_NOT_CONFIGURATION)))
                 .flatMap(queue -> validateQueue(queue, command)
                         .then(loadServices(command.reservationServiceId()))
                         .flatMap(services -> {
@@ -173,9 +173,8 @@ public class CreateReservationQueueUc {
                 || command.reservationServiceId() == null
                 || command.reservationServiceId().isEmpty()) {
 
-            throw new IllegalArgumentException(
-                    "Debes indicar cliente, barbero, barbería y al menos un servicio"
-            );
+            throw new BusinessExceptions(
+                                BarberQueueMessageExceptions.INVALID_QUEUE_DATA);
         }
     }
 
@@ -193,9 +192,8 @@ public class CreateReservationQueueUc {
                 queue.getBarbershopId(),
                 command.barbershopId()
         )) {
-            return Mono.error(new IllegalArgumentException(
-                    "El barbero no pertenece a la barbería indicada"
-            ));
+            return Mono.error(new BusinessExceptions(
+                                BarberQueueMessageExceptions.BARBER_NOT_IN_BARBERSHOP));
         }
 
         return Mono.empty();
@@ -229,10 +227,7 @@ public class CreateReservationQueueUc {
         );
 
         if (invalid) {
-            throw new IllegalArgumentException(
-                    "Uno o más servicios no están activos, "
-                            + "no pertenecen a la barbería o tienen duración inválida"
-            );
+            throw new BusinessExceptions(BarberQueueMessageExceptions.INVALID_SERVICES);
         }
     }
 

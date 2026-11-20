@@ -175,10 +175,11 @@ public class Service {
             Integer specialPrice
     ) {
         if (Boolean.TRUE.equals(offer)) {
-            if (specialPrice == null
-                    || specialPrice < 0
-                    || specialPrice >= price) {
+            if (specialPrice == null || specialPrice < 0) {
                 throw new BusinessExceptions(ServiceMessageExceptions.INVALID_DATA);
+            }
+            if (specialPrice >= price) {
+                throw new BusinessExceptions(ServiceMessageExceptions.OFFER_NOT_LOWER);
             }
 
             return specialPrice;
@@ -189,6 +190,16 @@ public class Service {
 
     private static boolean isNullOrBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+        /** Activa o desactiva el servicio; un servicio inactivo no se ofrece a los clientes. */
+    public Service withStatus(boolean active) {
+        return new Service(id, barberiaId, name, description, duration, active, offer, price,
+                specialPrice, createAt, Instant.now());
+    }
+
+    public boolean isActive() {
+        return !Boolean.FALSE.equals(status);
     }
 
     public Integer getId() { return id; }

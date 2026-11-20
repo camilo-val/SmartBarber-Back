@@ -108,7 +108,7 @@ public final class StatisticsCalculator {
         List<ReservationFact> closedScheduled = closedScheduled(facts);
         long effective = count(closedScheduled, ReservationFact::isCompleted);
         long available = (long) workingDays(range) * totalDailyMinutes();
-        long booked = done.stream().mapToLong(ReservationFact::minutes).sum();
+        long booked = done.stream().mapToLong(ReservationFact::bookedMinutes).sum();
 
         return new PeriodTotals(
                 done.stream().mapToLong(ReservationFact::revenue).sum(),
@@ -180,7 +180,7 @@ public final class StatisticsCalculator {
 
         return input.barbers().stream()
                 .map(barber -> {
-                    int booked = completedBy(barber).stream().mapToInt(ReservationFact::minutes).sum();
+                    int booked = completedBy(barber).stream().mapToInt(ReservationFact::bookedMinutes).sum();
                     int available = days * barber.dailyMinutes();
                     double occupancy = available > 0 ? Math.min(1, (double) booked / available) : 0;
                     return new BarberOccupancy(barber.barberId(), barber.name(), booked, available, occupancy);

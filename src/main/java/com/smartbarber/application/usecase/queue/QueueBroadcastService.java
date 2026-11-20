@@ -1,11 +1,19 @@
 package com.smartbarber.application.usecase.queue;
 
+import com.smartbarber.domain.exceptions.barberqueue.BarberQueueMessageExceptions;
+import com.smartbarber.domain.exceptions.BusinessExceptions;
 import com.smartbarber.domain.enums.NotificationType;
 import com.smartbarber.domain.model.customer.Customer;
 import com.smartbarber.domain.model.queue.QueueSnapshot;
 import com.smartbarber.domain.model.queue.event.UserEvent;
 import com.smartbarber.domain.model.reservation.Reservation;
+import com.smartbarber.domain.enums.RoleType;
+import com.smartbarber.domain.model.authentication.Authentication;
 import com.smartbarber.domain.port.CustomerPort;
+import com.smartbarber.domain.port.EmployeePort;
+import com.smartbarber.domain.port.authentication.CurrentAuthenticationPort;
+import com.smartbarber.domain.port.ServicePort;
+import com.smartbarber.domain.port.reservation.ServiceReservationPort;
 import com.smartbarber.domain.port.queue.BarberQueuePort;
 import com.smartbarber.domain.port.queue.UserEventPublisherPort;
 import com.smartbarber.domain.port.reservation.ReservationRepositoryPort;
@@ -30,32 +38,25 @@ public class QueueBroadcastService {
     private final BarberQueuePort barberQueuePort;
     private final ReservationRepositoryPort reservationRepositoryPort;
     private final CustomerPort customerPort;
-    private final UserEventPublisherPort userEventPublisherPort;
+        private final UserEventPublisherPort userEventPublisherPort;
+    private final ServiceReservationPort serviceReservationPort;
+        private final ServicePort servicePort;
+        private final CurrentAuthenticationPort currentAuthenticationPort;
+    private final EmployeePort employeePort;
 
-    private record CurrentTurnData(
-            Reservation reservation,
-            Customer customer
-    ) {
-    }
 
     public Mono<QueueSnapshot> getSnapshot(UUID employeeId) {
-        System.out.println(
-                "QueueBroadcastService.getSnapshot: employeeId="
-                        + employeeId
-        );
         return barberQueuePort.findByEmployeeId(employeeId)
                 .switchIfEmpty(Mono.error(
-                        new IllegalStateException(
-                                "La cola del barbero no está configurada"
-                        )
+                        new BusinessExceptions(
+                                BarberQueueMessageExceptions.THE_QUEUE_BABER_DOES_NOT_CONFIGURATION)
                 ))
                 .flatMap(queue ->
                         Boolean.TRUE.equals(queue.getAcceptingClients())
                                 ? buildSnapshot(queue)
                                 : Mono.error(
-                                new IllegalStateException(
-                                        "La cola del barbero no está aceptando clientes"
-                                )
+                                new BusinessExceptions(
+                                BarberQueueMessageExceptions.QUEUE_NOT_ACCEPTING_CLIENTS)
                         )
                 );
     }
@@ -63,21 +64,65 @@ public class QueueBroadcastService {
     private Mono<QueueSnapshot> getSnapshots(UUID employeeId) {
         return barberQueuePort.findByEmployeeId(employeeId)
                 .switchIfEmpty(Mono.error(
-                        new IllegalStateException(
-                                "La cola del barbero no está configurada"
-                        )
+                        new BusinessExceptions(
+                                BarberQueueMessageExceptions.THE_QUEUE_BABER_DOES_NOT_CONFIGURATION)
                 ))
                 .flatMap(this::buildSnapshot);
     }
 
-    public Mono<Void> publish(UUID employeeId, NotificationType eventType) {
+        /**
+     * Cola vista por el usuario autenticado:
+     * <ul>
+     *   <li>Barbero de esa cola o administrador de su barbería: vista
+     *   completa, también con la cola cerrada (para volver a abrirla).</li>
+     *   <li>Cliente: solo con la cola abierta; su turno completo y los demás
+     *   sin datos personales.</li>
+     * </ul>
+     */
+    public Mono<QueueSnapshot> getSnapshotForCurrentUser(UUID employeeId) {
+        return currentAuthenticationPort.getCurrentAuthentication()
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(user -> canSeeFullQueue(user.orElse(null), employeeId)
+                        .flatMap(staff -> Boolean.TRUE.equals(staff)
+                                ? getSnapshots(employeeId)
+                                : getSnapshot(employeeId).map(snapshot -> customerView(user.orElse(null), snapshot))));
+    }
 
-        System.out.println(
-                "QueueBroadcastService.publish: employeeId="
-                        + employeeId
-                        + ", eventType="
-                        + eventType
-        );
+    /** Usuario de la sesión actual (vacío si no hay sesión), para el WebSocket. */
+    public Mono<Optional<Authentication>> currentUser() {
+        return currentAuthenticationPort.getCurrentAuthentication()
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty());
+    }
+
+    /**
+     * Personal que puede ver la cola completa: el barbero dueño o el
+     * administrador de la barbería de ese barbero.
+     */
+    public Mono<Boolean> canSeeFullQueue(Authentication user, UUID employeeId) {
+        if (user == null || user.getEmployee() == null || user.getUser() == null
+                || user.getUser().getRoleId() == null) {
+            return Mono.just(false);
+        }
+        if (employeeId.equals(user.getEmployee().getId())) {
+            return Mono.just(true);
+        }
+        if (user.getUser().getRoleId() != RoleType.ADMIN.getId() || user.getEmployee().getBarberiaId() == null) {
+            return Mono.just(false);
+        }
+        return employeePort.findById(employeeId)
+                .map(barber -> user.getEmployee().getBarberiaId().equals(barber.getBarberiaId()))
+                .defaultIfEmpty(false);
+    }
+
+    /** Vista de cliente: su turno completo y los demás sin datos personales. */
+    public QueueSnapshot customerView(Authentication user, QueueSnapshot snapshot) {
+        UUID customerId = user != null && user.getCustomer() != null ? user.getCustomer().getId() : null;
+        return snapshot.forCustomer(customerId);
+    }
+
+    public Mono<Void> publish(UUID employeeId, NotificationType eventType) {
 
         return getSnapshots(employeeId)
                 .doOnNext(snapshot ->
@@ -95,132 +140,72 @@ public class QueueBroadcastService {
     private Mono<QueueSnapshot> buildSnapshot(
             BarberQueueEntity queue
     ) {
-
         UUID employeeId = queue.getEmployeeId();
 
-        Mono<Optional<CurrentTurnData>> currentTurnMono =
-                reservationRepositoryPort
-                        .findCurrentQueueTurn(employeeId)
-                        .flatMap(reservation ->
-                                customerPort.findById(
-                                                reservation.getCustomerId()
-                                        )
-                                        .map(customer ->
-                                                new CurrentTurnData(
-                                                        reservation,
-                                                        customer
-                                                )
-                                        )
-                        )
-                        .map(Optional::of)
-                        .defaultIfEmpty(Optional.empty());
+        Mono<Optional<Reservation>> currentMono = reservationRepositoryPort
+                .findCurrentQueueTurn(employeeId)
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty());
 
-        Mono<List<Reservation>> waitingMono =
-                reservationRepositoryPort
-                        .findWaitingQueueByEmployeeId(employeeId)
-                        .collectList();
+        Mono<List<Reservation>> waitingMono = reservationRepositoryPort
+                .findWaitingQueueByEmployeeId(employeeId)
+                .collectList();
 
-        return Mono.zip(
-                        currentTurnMono,
-                        waitingMono
-                )
+        return Mono.zip(currentMono, waitingMono)
                 .flatMap(tuple -> {
+                    Reservation current = tuple.getT1().orElse(null);
+                    List<Reservation> waiting = tuple.getT2();
 
-                    Optional<CurrentTurnData> currentOptional =
-                            tuple.getT1();
+                    Mono<Optional<QueueSnapshot.QueueTurn>> currentTurn = current == null
+                            ? Mono.just(Optional.empty())
+                            : turnOf(current, 0, 0).map(Optional::of);
 
-                    List<Reservation> waiting =
-                            tuple.getT2();
-
-                    Reservation current =
-                            currentOptional
-                                    .map(CurrentTurnData::reservation)
-                                    .orElse(null);
-
-                    Customer currentCustomer =
-                            currentOptional
-                                    .map(CurrentTurnData::customer)
-                                    .orElse(null);
-
-                    int remainingMinutes =
-                            estimateRemainingMinutes(current);
-
-                    QueueSnapshot.QueueTurn currentTurn =
-                            current == null
-                                    ? null
-                                    : new QueueSnapshot.QueueTurn(
-                                    current.getId(),
-                                    buildCustomer(currentCustomer),
-                                    0,
-                                    0,
-                                    current.getDuration(),
-                                    current.getStatus().name()
-                            );
-
-                    List<Mono<QueueSnapshot.QueueTurn>> waitingTurns =
-                            new ArrayList<>();
-
-                    int accumulatedMinutes =
-                            remainingMinutes;
-
+                    // Espera estimada: lo que falta del turno actual más la
+                    // duración de los turnos anteriores en la fila.
+                    List<Mono<QueueSnapshot.QueueTurn>> waitingTurns = new ArrayList<>();
+                    int accumulated = estimateRemainingMinutes(current);
                     for (int i = 0; i < waiting.size(); i++) {
-
-                        Reservation reservation =
-                                waiting.get(i);
-
-                        int position = i + 1;
-
-                        int estimatedWait =
-                                accumulatedMinutes;
-
+                        Reservation reservation = waiting.get(i);
+                        waitingTurns.add(turnOf(reservation, i + 1, accumulated));
                         if (reservation.getDuration() != null) {
-                            accumulatedMinutes +=
-                                    reservation.getDuration();
+                            accumulated += reservation.getDuration();
                         }
-
-                        Mono<QueueSnapshot.QueueTurn> turnMono =
-                                customerPort
-                                        .findById(
-                                                reservation.getCustomerId()
-                                        )
-                                        .map(customer ->
-                                                new QueueSnapshot.QueueTurn(
-                                                        reservation.getId(),
-                                                        buildCustomer(customer),
-                                                        position,
-                                                        estimatedWait,
-                                                        reservation.getDuration(),
-                                                        reservation.getStatus().name()
-                                                )
-                                        )
-                                        .defaultIfEmpty(
-                                                new QueueSnapshot.QueueTurn(
-                                                        reservation.getId(),
-                                                        null,
-                                                        position,
-                                                        estimatedWait,
-                                                        reservation.getDuration(),
-                                                        reservation.getStatus().name()
-                                                )
-                                        );
-
-                        waitingTurns.add(turnMono);
                     }
 
-                    return Flux.mergeSequential(waitingTurns)
-                            .collectList()
-                            .map(turns ->
-                                    new QueueSnapshot(
-                                            employeeId,
-                                            Boolean.TRUE.equals(
-                                                    queue.getAcceptingClients()
-                                            ),
-                                            currentTurn,
-                                            List.copyOf(turns),
-                                            OffsetDateTime.now()
-                                    )
-                            );
+                    return Mono.zip(currentTurn, Flux.mergeSequential(waitingTurns).collectList())
+                            .map(turns -> new QueueSnapshot(
+                                    employeeId,
+                                    Boolean.TRUE.equals(queue.getAcceptingClients()),
+                                    turns.getT1().orElse(null),
+                                    List.copyOf(turns.getT2()),
+                                    OffsetDateTime.now()));
                 });
+    }
+
+    /** Turno con su cliente, sus servicios y su nota. */
+    private Mono<QueueSnapshot.QueueTurn> turnOf(Reservation reservation, int position, int estimatedWait) {
+        Mono<Optional<Customer>> customer = customerPort.findById(reservation.getCustomerId())
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty());
+
+        Mono<List<String>> services = serviceReservationPort.findByReservationId(reservation.getId())
+                .concatMap(line -> servicePort.findById(line.getServiceId())
+                        .map(service -> service.getName())
+                        .defaultIfEmpty("Servicio"))
+                .collectList();
+
+        return Mono.zip(customer, services)
+                .map(data -> new QueueSnapshot.QueueTurn(
+                        reservation.getId(),
+                        data.getT1().map(this::buildCustomer).orElse(null),
+                        position,
+                        estimatedWait,
+                        reservation.getDuration(),
+                        reservation.getStatus().name(),
+                        data.getT2(),
+                        reservation.getNotes(),
+                        reservation.getReservationType() == null ? null : reservation.getReservationType().name(),
+                        false));
     }
 
     private int estimateRemainingMinutes(

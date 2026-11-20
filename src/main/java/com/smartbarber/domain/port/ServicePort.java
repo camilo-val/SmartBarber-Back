@@ -13,4 +13,5 @@ public interface ServicePort {
     Mono<Service> update(Integer id, Service service);
     Mono<Boolean> existByNameAndDescription(String name, String description);
     Flux<Service> findByBarberiaId(UUID barberiaId);
+    Mono<Void> deleteById(Integer id);
 }

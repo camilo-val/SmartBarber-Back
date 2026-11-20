@@ -1,5 +1,7 @@
 package com.smartbarber.infrastructure.entrypoint.reactiveweb.handler.service;
 
+import com.smartbarber.application.usecase.service.ManageServiceUC;
+import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.service.ServiceStatusRqDto;
 import com.smartbarber.application.usecase.service.CreateServiceUC;
 import com.smartbarber.application.usecase.service.SearchServiceUC;
 import com.smartbarber.application.usecase.service.UpdateServiceUC;
@@ -24,7 +26,26 @@ public class ServiceHandler {
     private final CreateServiceUC createServiceUC;
     private final validateRequest validateRequest;
     private final UpdateServiceUC updateServiceUC;
-    private final SearchServiceUC searchServiceUC;
+        private final SearchServiceUC searchServiceUC;
+    private final ManageServiceUC manageServiceUC;
+
+    /** PATCH /services-service/{id}/status  { "active": true|false } (ADMIN de esa barbería). */
+    public Mono<ServerResponse> changeServiceStatus(ServerRequest request) {
+        Integer id = Integer.valueOf(request.pathVariable("id"));
+        return request.bodyToMono(ServiceStatusRqDto.class)
+                .switchIfEmpty(Mono.error(() -> new IllegalArgumentException("Cuerpo vacío")))
+                .doOnNext(validateRequest::validate)
+                .flatMap(body -> manageServiceUC.changeStatus(id, body.active()))
+                .map(mapper::toResponse)
+                .flatMap(response -> ServerResponse.ok().bodyValue(response));
+    }
+
+    /** DELETE /services-service/{id} (ADMIN de esa barbería; SC_006 si tiene reservas). */
+    public Mono<ServerResponse> deleteService(ServerRequest request) {
+        Integer id = Integer.valueOf(request.pathVariable("id"));
+        return manageServiceUC.delete(id)
+                .then(ServerResponse.noContent().build());
+    }
 
     public Mono<ServerResponse> createService(ServerRequest request){
         return request.bodyToMono(ServiceRqDto.class)

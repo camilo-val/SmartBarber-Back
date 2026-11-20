@@ -5,6 +5,7 @@ import com.smartbarber.domain.enums.UserStatus;
 import com.smartbarber.domain.model.employee.Employee;
 import com.smartbarber.domain.model.user.User;
 import com.smartbarber.domain.port.EmployeePort;
+import com.smartbarber.domain.port.SchedulePort;
 import com.smartbarber.domain.port.UserPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -19,21 +20,23 @@ import java.util.function.Function;
 
 /**
  * Barberos que un cliente puede reservar: tienen una cuenta activa con rol
- * BARBER. Se excluyen los bloqueados, los que aún no tienen cuenta y el
- * administrador de la barbería.
+ * BARBER y no están de vacaciones. Se excluyen los bloqueados, los que aún no
+ * tienen cuenta, los que están de vacaciones y el administrador.
  */
 @Component
 @RequiredArgsConstructor
 public class FindBookableBarbersUC {
 
     private final EmployeePort employeePort;
-    private final UserPort userPort;
+        private final UserPort userPort;
+    private final SchedulePort schedulePort;
 
     /** Barberos reservables de la barbería (lista vacía si no hay ninguno). */
     public Flux<Employee> findByBarbershop(UUID barbershopId) {
         return employeePort.findAllBarberId(barbershopId)
                 .collectList()
-                .flatMapMany(this::keepBookable);
+                .flatMapMany(this::keepBookable)
+                .filterWhen(employee -> notOnVacation(employee.getId()));
     }
 
     /** Indica si el empleado pertenece a la barbería y puede recibir reservas. */
@@ -48,7 +51,18 @@ public class FindBookableBarbersUC {
                         : userPort.findAllByIds(List.of(employee.getUserId()))
                                 .next()
                                 .map(FindBookableBarbersUC::isBookableAccount))
-                .defaultIfEmpty(false);
+                .defaultIfEmpty(false)
+                .flatMap(bookable -> Boolean.TRUE.equals(bookable)
+                        ? notOnVacation(employeeId)
+                        : Mono.just(false));
+    }
+
+    /** Sin horario configurado se considera disponible (el horario lo valida la agenda). */
+    private Mono<Boolean> notOnVacation(UUID employeeId) {
+        return schedulePort.findByIdEmployee(employeeId)
+                .map(schedule -> !Boolean.TRUE.equals(schedule.getVacation()))
+                .defaultIfEmpty(true)
+                .onErrorReturn(true);
     }
 
     private Flux<Employee> keepBookable(List<Employee> employees) {

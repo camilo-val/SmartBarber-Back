@@ -145,19 +145,18 @@ public class Schedule {
             );
         }
 
+        // En vacaciones el horario se conserva (para cuando regrese) o se omite:
+        // no se exige que venga vacío. Si viene, debe estar completo.
         if (Boolean.TRUE.equals(vacation)) {
-
-            boolean hasSchedule = startTime != null
-                    || endTime != null
-                    || lunchStartTime != null
-                    || lunchEndTime != null;
-
-            if (hasSchedule) {
+            boolean anyTime = startTime != null || endTime != null
+                    || lunchStartTime != null || lunchEndTime != null;
+            boolean allTimes = startTime != null && endTime != null
+                    && lunchStartTime != null && lunchEndTime != null;
+            if (anyTime && !allTimes) {
                 throw new BusinessExceptions(
                         ScheduleMessageExceptions.INVALID_DATA
                 );
             }
-
             return;
         }
 

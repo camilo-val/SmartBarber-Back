@@ -14,6 +14,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import com.smartbarber.domain.model.authentication.Authentication;
+import com.smartbarber.domain.model.queue.QueueSnapshot;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -27,7 +30,6 @@ public class VirtualQueueWsHandler implements WebSocketHandler {
 
     @Override
     public Mono<Void> handle(WebSocketSession session) {
-        System.out.printf("ENTREEEEEEASADSAD");
         final UUID employeeId;
 
         try {
@@ -44,6 +46,13 @@ public class VirtualQueueWsHandler implements WebSocketHandler {
                 "Cliente WebSocket suscrito a la cola del empleado {}",
                 employeeId
         );
+
+        // 0. Quién está conectado: el personal recibe la cola completa; un
+        //    cliente (o una sesión sin identificar), sin datos de los demás.
+        Mono<Optional<Authentication>> viewer = queueBroadcastService.currentUser().cache();
+        Mono<Boolean> staff = viewer
+                .flatMap(user -> queueBroadcastService.canSeeFullQueue(user.orElse(null), employeeId))
+                .cache();
 
         // 1. Enviar la fotografía inicial de la cola.
         Flux<UserEvent> initialSnapshot = queueBroadcastService
@@ -88,6 +97,8 @@ public class VirtualQueueWsHandler implements WebSocketHandler {
                                 initialSnapshot,
                                 updates
                         )
+                        .concatMap(event -> Mono.zip(viewer, staff)
+                                .map(access -> forViewer(event, access.getT1().orElse(null), access.getT2())))
                         .doOnSubscribe(s ->
                                 log.info("OUTGOING SUBSCRIBED"))
                         .doOnComplete(() ->
@@ -141,5 +152,16 @@ public class VirtualQueueWsHandler implements WebSocketHandler {
         }
 
         return UUID.fromString(employeeId);
+    }
+
+    /** Quita los datos de otros clientes cuando quien recibe no es personal de la barbería. */
+    private UserEvent forViewer(UserEvent event, Authentication viewer, boolean staff) {
+        if (staff || !(event.payload() instanceof QueueSnapshot snapshot)) {
+            return event;
+        }
+        return UserEvent.builder()
+                .type(event.type())
+                .payload(queueBroadcastService.customerView(viewer, snapshot))
+                .build();
     }
 }

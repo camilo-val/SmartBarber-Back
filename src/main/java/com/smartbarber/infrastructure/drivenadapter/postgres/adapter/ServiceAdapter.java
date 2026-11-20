@@ -61,4 +61,9 @@ public class ServiceAdapter implements ServicePort {
                 .map(mapper::toDomain);
     }
 
+    @Override
+    public Mono<Void> deleteById(Integer id) {
+        return serviceData.deleteById(id);
+    }
+
 }

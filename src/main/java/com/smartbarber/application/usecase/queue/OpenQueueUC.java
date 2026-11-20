@@ -12,6 +12,7 @@ import com.smartbarber.domain.model.employee.EmployeeQueueResponse;
 import com.smartbarber.domain.model.queue.notification.Notification;
 import com.smartbarber.domain.port.BarberShopRepositoryPort;
 import com.smartbarber.domain.port.EmployeePort;
+import com.smartbarber.domain.port.SchedulePort;
 import com.smartbarber.domain.port.queue.BarberQueuePort;
 import com.smartbarber.domain.port.queue.notification.NotificationEventPort;
 import com.smartbarber.infrastructure.drivenadapter.postgres.entity.BarberQueueEntity;
@@ -30,15 +31,22 @@ public class OpenQueueUC {
     private final BarberQueuePort barberQueuePort;
     private final BarberShopRepositoryPort barberShopRepositoryPort;
     private final NotificationEventPort notificationEventPort;
-    private final TransactionalOperator transactionalOperator;
+        private final TransactionalOperator transactionalOperator;
+    private final SchedulePort schedulePort;
 
     public Mono<Void> execute(UUID employeeId) {
-        Mono<BarberQueue> operation = employeePort
-                .findById(employeeId)
+        // Un barbero en vacaciones no abre su cola.
+        Mono<Void> notOnVacation = schedulePort.findByIdEmployee(employeeId)
+                .onErrorResume(error -> Mono.empty())
+                .filter(schedule -> Boolean.TRUE.equals(schedule.getVacation()))
+                .flatMap(schedule -> Mono.<Void>error(
+                        new BusinessExceptions(BarberQueueMessageExceptions.BARBER_ON_VACATION)));
+
+        Mono<BarberQueue> operation = notOnVacation.then(employeePort
+                .findById(employeeId))
                 .switchIfEmpty(Mono.error(
-                        new IllegalArgumentException(
-                                "No existe el empleado/barbero indicado"
-                        )
+                        new BusinessExceptions(
+                                BarberQueueMessageExceptions.BARBER_NOT_FOUND)
                 ))
                 .flatMap(employee ->
                         barberQueuePort.existsByEmployeeIdAndBarbershopIdAndAcceptingClients(employee.getId(),
@@ -55,9 +63,8 @@ public class OpenQueueUC {
                                 .then(barberQueuePort
                                         .findByEmployeeIdForUpdate(employeeId))
                                 .switchIfEmpty(Mono.error(
-                                        new IllegalStateException(
-                                                "No fue posible crear o bloquear la cola del barbero"
-                                        )
+                                        new BusinessExceptions(
+                                BarberQueueMessageExceptions.QUEUE_OPERATION_FAILED)
                                 ))
                                 .flatMap(locked ->
                                         barberQueuePort.updateAcceptingClients(
@@ -69,9 +76,8 @@ public class OpenQueueUC {
                                                                 employeeId
                                                         )
                                                                 : Mono.error(
-                                                                new IllegalStateException(
-                                                                        "No fue posible abrir la cola"
-                                                                )
+                                                                new BusinessExceptions(
+                                BarberQueueMessageExceptions.QUEUE_OPERATION_FAILED)
                                                         )
                                                 )
                                                 .flatMap(entity -> barberShopRepositoryPort.findById(employee.getBarberiaId())

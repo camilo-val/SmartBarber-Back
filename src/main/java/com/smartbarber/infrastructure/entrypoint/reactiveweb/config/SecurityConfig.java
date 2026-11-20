@@ -48,7 +48,6 @@ public class SecurityConfig {
                                 "/barber-service/name/**",
                                 "/barber-service/company-name/**",
                                 "/barber-service/id/**",
-                                "/barber-service/email/**",
                                 "/actuator/health"
                         ).permitAll()
 
@@ -193,6 +192,20 @@ public class SecurityConfig {
 
                         .pathMatchers(HttpMethod.PUT,
                                 "/services-service/actualizar-service/**"
+                        ).hasRole(RoleType.ADMIN.name())
+
+                        .pathMatchers(HttpMethod.GET,
+                                // Prueba de envío de correo: solo administradores
+                                // (si fuera pública, cualquiera podría usar el SMTP).
+                                "/barber-service/email/**"
+                        ).hasRole(RoleType.ADMIN.name())
+
+                        .pathMatchers(HttpMethod.PATCH,
+                                "/services-service/*/status"
+                        ).hasRole(RoleType.ADMIN.name())
+
+                        .pathMatchers(HttpMethod.DELETE,
+                                "/services-service/*"
                         ).hasRole(RoleType.ADMIN.name())
 
 

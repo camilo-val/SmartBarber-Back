@@ -96,7 +96,8 @@ public class VirtualQueueHandler {
                 request.pathVariable("employeeId")
         );
 
-        return queueBroadcastService.getSnapshot(employeeId)
+        // El personal ve la cola completa; un cliente, sin datos de los demás.
+        return queueBroadcastService.getSnapshotForCurrentUser(employeeId)
                 .flatMap(snapshot ->
                         ServerResponse.ok().bodyValue(snapshot)
                 );

@@ -61,10 +61,11 @@ public interface SubscriptionBarbershopData extends ReactiveCrudRepository<Subsc
     @Query("""
             SELECT *
             FROM suscripcion_barberia sb
-            WHERE fecha_creacion = (
-                SELECT MAX(fecha_creacion)
-                FROM suscripcion_barberia sb
-            ) and sb.id_barberia = :barbershopId;
+            WHERE sb.id_barberia = :barbershopId
+            -- La vigente (ACTIVE) primero; si no hay, la más reciente de la barbería.
+            ORDER BY CASE WHEN sb.estado = 'ACTIVE' THEN 0 ELSE 1 END,
+                     sb.fecha_creacion DESC
+            LIMIT 1
             """)
     Mono<SubscriptionBarbershopEntity> findActualSubscription(@Param("barbershopId") UUID barbershopId);
 

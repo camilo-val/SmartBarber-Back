@@ -46,4 +46,16 @@ class ScheduleRangesTest {
         assertDoesNotThrow(() -> Schedule.rebuild(1, EMPLOYEE, LocalTime.parse("08:00"), LocalTime.parse("18:00"),
                 LocalTime.parse("19:00"), LocalTime.parse("20:00"), false));
     }
+
+    @Test
+    void enVacacionesSeConservaElHorario() {
+        assertDoesNotThrow(() -> Schedule.createSchedule(null, EMPLOYEE, LocalTime.parse("08:00"),
+                LocalTime.parse("18:00"), LocalTime.parse("12:00"), LocalTime.parse("13:00"), true));
+    }
+
+    @Test
+    void enVacacionesElHorarioIncompletoNoEsValido() {
+        assertThrows(BusinessExceptions.class, () -> Schedule.createSchedule(null, EMPLOYEE,
+                LocalTime.parse("08:00"), null, null, null, true));
+    }
 }

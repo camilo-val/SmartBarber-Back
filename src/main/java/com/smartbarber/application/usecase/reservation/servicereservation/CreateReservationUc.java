@@ -51,6 +51,11 @@ public class CreateReservationUc {
 
     public Mono<Reservation> createReservation(ReservationCommand command) {
         return loadServices(command.reservationServiceId())
+                .flatMap(services -> services.stream().allMatch(service -> service.isActive()
+                                && command.barbershopId() != null
+                                && command.barbershopId().equals(service.getBarberiaId()))
+                        ? Mono.just(services)
+                        : Mono.error(new BusinessExceptions(ServiceMessageExceptions.SERVICE_INACTIVE)))
                 .flatMap(services -> {
                     Integer duration = getDuration(services);
 

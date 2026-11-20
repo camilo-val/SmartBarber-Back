@@ -1,5 +1,7 @@
 package com.smartbarber.application.usecase.queue;
 
+import com.smartbarber.domain.exceptions.barberqueue.BarberQueueMessageExceptions;
+import com.smartbarber.domain.exceptions.BusinessExceptions;
 import com.smartbarber.domain.port.reservation.ReservationRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -22,17 +24,15 @@ public class QueueAvailabilityService {
 
         if (employeeId == null) {
             return Mono.error(
-                    new IllegalArgumentException(
-                            "El id del barbero es obligatorio"
-                    )
+                    new BusinessExceptions(
+                                BarberQueueMessageExceptions.INVALID_QUEUE_DATA)
             );
         }
 
         if (newDuration == null || newDuration <= 0) {
             return Mono.error(
-                    new IllegalArgumentException(
-                            "La duración debe ser mayor a cero"
-                    )
+                    new BusinessExceptions(
+                                BarberQueueMessageExceptions.INVALID_QUEUE_DATA)
             );
         }
 
@@ -74,12 +74,7 @@ public class QueueAvailabilityService {
 
                         if (!estimatedFinish.isBefore(nextReservationStart)) {
                             return Mono.error(
-                                    new IllegalStateException(
-                                            "No hay tiempo suficiente para "
-                                                    + "atender este servicio "
-                                                    + "antes de la siguiente "
-                                                    + "reserva agendada"
-                                    )
+                                    new BusinessExceptions(BarberQueueMessageExceptions.NOT_ENOUGH_TIME)
                             );
                         }
 

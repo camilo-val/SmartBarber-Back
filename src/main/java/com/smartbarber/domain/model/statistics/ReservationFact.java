@@ -60,6 +60,18 @@ public record ReservationFact(
         return services.stream().mapToLong(ServiceLine::price).sum();
     }
 
+        /**
+     * Minutos que la atención ocupa en la agenda del barbero, para la
+     * ocupación: el tiempo reservado (duración planeada o suma de servicios)
+     * aunque la atención real termine antes; si duró más, el tiempo real.
+     */
+    public int bookedMinutes() {
+        int planned = plannedMinutes != null && plannedMinutes > 0
+                ? plannedMinutes
+                : services.stream().mapToInt(ServiceLine::minutes).sum();
+        return Math.max(minutes(), planned);
+    }
+
     /** Minutos de atención: los reales si se conocen; si no, los planeados. */
     public int minutes() {
         if (start != null && end != null && end.isAfter(start)) {

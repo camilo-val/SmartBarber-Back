@@ -1,5 +1,7 @@
 package com.smartbarber.application.usecase.queue;
 
+import com.smartbarber.domain.exceptions.barberqueue.BarberQueueMessageExceptions;
+import com.smartbarber.domain.exceptions.BusinessExceptions;
 import com.smartbarber.domain.enums.NotificationType;
 import com.smartbarber.domain.model.barberqueue.BarberQueue;
 import com.smartbarber.domain.model.barbershop.Barbershop;
@@ -38,9 +40,8 @@ public class CloseQueueUC {
                         log.info("Found queue for employeeId: {}", employeeId))
                 .switchIfEmpty(
                         Mono.error(
-                                new IllegalStateException(
-                                        "La cola del barbero no está configurada"
-                                )
+                                new BusinessExceptions(
+                                BarberQueueMessageExceptions.THE_QUEUE_BABER_DOES_NOT_CONFIGURATION)
                         )
                 )
                 .flatMap(queue ->
@@ -65,9 +66,8 @@ public class CloseQueueUC {
                                                                 .flatMap(rows -> {
                                                                     if (rows <= 0) {
                                                                         return Mono.error(
-                                                                                new IllegalStateException(
-                                                                                        "No fue posible cerrar la cola"
-                                                                                )
+                                                                                new BusinessExceptions(
+                                BarberQueueMessageExceptions.QUEUE_OPERATION_FAILED)
                                                                         );
                                                                     }
 

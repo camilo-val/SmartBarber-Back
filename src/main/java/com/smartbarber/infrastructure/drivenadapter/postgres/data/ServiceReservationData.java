@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface ServiceReservationData extends ReactiveCrudRepository<ServiceReservationEntity, UUID> {
     Flux<ServiceReservationEntity> findByReservationId(UUID reservationId);
     Mono<Boolean> existsByReservationIdAndServiceId(UUID reservationId, Integer serviceId);
+    Mono<Boolean> existsByServiceId(Integer serviceId);
 }

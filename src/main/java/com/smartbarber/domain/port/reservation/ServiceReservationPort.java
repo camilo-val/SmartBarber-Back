@@ -12,4 +12,6 @@ public interface ServiceReservationPort {
     Mono<ServiceReservation> findById(UUID id);
     Flux<ServiceReservation> findByReservationId(UUID reservationId);
     Mono<Boolean> existsByReservationIdAndServiceId(UUID reservationId, Integer serviceId);
+    /** Indica si alguna reserva usó el servicio (no se puede eliminar sin perder el historial). */
+    Mono<Boolean> existsByServiceId(Integer serviceId);
 }

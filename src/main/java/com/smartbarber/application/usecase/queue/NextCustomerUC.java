@@ -1,6 +1,8 @@
 
 package com.smartbarber.application.usecase.queue;
 
+import com.smartbarber.domain.exceptions.barberqueue.BarberQueueMessageExceptions;
+import com.smartbarber.domain.exceptions.BusinessExceptions;
 import com.smartbarber.domain.enums.NotificationType;
 import com.smartbarber.domain.model.reservation.Reservation;
 import com.smartbarber.domain.port.queue.BarberQueuePort;
@@ -25,9 +27,8 @@ public class NextCustomerUC {
         Mono<Reservation> operation = barberQueuePort
                 .findByEmployeeIdForUpdate(employeeId)
                 .switchIfEmpty(Mono.error(
-                        new IllegalStateException(
-                                "La cola del barbero no está configurada"
-                        )
+                        new BusinessExceptions(
+                                BarberQueueMessageExceptions.THE_QUEUE_BABER_DOES_NOT_CONFIGURATION)
                 ))
                 .flatMap(queue ->
                         reservationRepositoryPort
@@ -36,9 +37,8 @@ public class NextCustomerUC {
                                 .flatMap(hasCurrent -> {
                                     if (hasCurrent) {
                                         return Mono.error(
-                                                new IllegalStateException(
-                                                        "El barbero ya tiene un turno en atención"
-                                                )
+                                                new BusinessExceptions(
+                                BarberQueueMessageExceptions.TURN_ALREADY_IN_PROGRESS)
                                         );
                                     }
 
@@ -48,9 +48,8 @@ public class NextCustomerUC {
                                             )
                                             .next()
                                             .switchIfEmpty(Mono.error(
-                                                    new IllegalStateException(
-                                                            "No hay clientes esperando"
-                                                    )
+                                                    new BusinessExceptions(
+                                BarberQueueMessageExceptions.NO_WAITING_CUSTOMERS)
                                             ))
                                             .flatMap(waiting ->
                                                     reservationRepositoryPort

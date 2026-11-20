@@ -19,6 +19,8 @@ public class ServiceRuta {
                 .andRoute(RequestPredicates.GET(SERVICES_SERVICE + "/name/{name}"),serviceHandler::findServiceByName)
                 .andRoute(RequestPredicates.GET(SERVICES_SERVICE + "/id/{id}"),serviceHandler::findServiceById)
                 .andRoute(RequestPredicates.PUT(SERVICES_SERVICE + "/actualizar-service/{id}"),serviceHandler::updateService)
-                .andRoute(RequestPredicates.GET(SERVICES_SERVICE + "/barberia/{barberiaId}"), serviceHandler::findServicesByBarberiaId);
+                .andRoute(RequestPredicates.GET(SERVICES_SERVICE + "/barberia/{barberiaId}"), serviceHandler::findServicesByBarberiaId)
+                .andRoute(RequestPredicates.PATCH(SERVICES_SERVICE + "/{id}/status"), serviceHandler::changeServiceStatus)
+                .andRoute(RequestPredicates.DELETE(SERVICES_SERVICE + "/{id}"), serviceHandler::deleteService);
     }
 }

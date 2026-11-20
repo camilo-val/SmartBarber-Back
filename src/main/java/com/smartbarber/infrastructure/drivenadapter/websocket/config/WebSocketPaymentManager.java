@@ -14,21 +14,23 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WebSocketPaymentManager {
     private final Map<UUID, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
-    public void registerSession(UUID orderId, WebSocketSession session) {
-        log.info("Registering WebSocket Payment session for userId: {}, sesion id : {}", orderId, session.getId());
-        sessions.put(orderId, session);
+    public void registerSession(UUID userId, WebSocketSession session) {
+        WebSocketSession previous = sessions.put(userId, session);
+        log.info("Payment WS session registered. userId={} session={} replaced={}",
+                userId, session.getId(), previous == null ? "none" : previous.getId());
     }
 
-    public void removeSession(UUID orderId) {
-        log.info("Removing WebSocket Payment session for userId: {}", orderId);
-        sessions.remove(orderId);
+    /** Removes the entry only if it still points to this session, so a late close never drops a newer connection. */
+    public void removeSession(UUID userId, WebSocketSession session) {
+        boolean removed = sessions.remove(userId, session);
+        log.info("Payment WS session closed. userId={} session={} removedFromRegistry={}",
+                userId, session.getId(), removed);
     }
 
-    public Mono<Void> send(UUID orderId, String message){
-        log.info("Sending message to WebSocket Payment session for userId: {}", orderId);
-        WebSocketSession session = sessions.get(orderId);
-        if(session==null){
-            log.warn("No active websocket session for userId {}", orderId);
+    public Mono<Void> send(UUID userId, String message){
+        WebSocketSession session = sessions.get(userId);
+        if (session == null || !session.isOpen()) {
+            log.warn("No open Payment Service WebSocket session for userId {}", userId);
             return Mono.error(new IllegalStateException("No active Payment Service WebSocket session"));
         }
         return session.send(Mono.just(session.textMessage(message)));

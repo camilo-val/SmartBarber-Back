@@ -32,7 +32,7 @@ public class CreateSubscriptionBarberUC {
                                         new BusinessExceptions(SubscriptionBarberMessageExceptions.THE_BARBER_HAS_ALREADY_ACTIVE_OR_PENDING_SUBSCRIPTIONS));
                             }
                             SubscriptionBarbershop newSubscription = SubscriptionBarbershop
-                            .create(subscriptionBarbershop.barberId(), subscriptionBarbershop.subscriptionId(),subscriptionBarbershop.duration(),
+                            .create(subscriptionBarbershop.barberId(), subscriptionBarbershop.subscriptionId(),SubscriptionBarbershop.PLAN_DURATION_DAYS,
                                     plan.getPrice(), plan.getDiscount(), subscriptionBarbershop.automaticRenew()
                             );
                             return port.save(newSubscription)

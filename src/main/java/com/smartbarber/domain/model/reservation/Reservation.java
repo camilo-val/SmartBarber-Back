@@ -326,6 +326,55 @@ public class Reservation {
         );
     }
 
+        /**
+     * El barbero o el administrador finalizan una reserva atendida.
+     * Solo desde CONFIRMED o IN_PROGRESS y una vez llegada la hora de inicio.
+     */
+    public Reservation finalizar(OffsetDateTime now) {
+        if (status != ReservationStatus.CONFIRMED && status != ReservationStatus.IN_PROGRESS) {
+            throw new BusinessExceptions(ReservationMessageExceptions.CANNOT_COMPLETE_RESERVATION);
+        }
+        if (startTime != null && startTime.isAfter(now)) {
+            throw new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_STARTED);
+        }
+        return withStatus(ReservationStatus.COMPLETED,
+                reservationType == ReservationType.VIRTUAL_QUEUE ? now : this.endTime, now);
+    }
+
+    /**
+     * El cliente no se presentó a una reserva agendada. Solo desde PENDING o
+     * CONFIRMED y una vez llegada la hora de inicio.
+     */
+    public Reservation registrarInasistencia(OffsetDateTime now) {
+        boolean scheduled = reservationType == ReservationType.SERVICE_RESERVATION;
+        boolean open = status == ReservationStatus.PENDING || status == ReservationStatus.CONFIRMED;
+        if (!scheduled || !open) {
+            throw new BusinessExceptions(ReservationMessageExceptions.CANNOT_MARK_NO_SHOW);
+        }
+        if (startTime == null || startTime.isAfter(now)) {
+            throw new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_STARTED);
+        }
+        return withStatus(ReservationStatus.NO_SHOW, this.endTime, now);
+    }
+
+    private Reservation withStatus(ReservationStatus newStatus, OffsetDateTime newEndTime, OffsetDateTime now) {
+        return new Reservation(
+                this.id,
+                this.customerId,
+                this.barbershopId,
+                this.employeeId,
+                this.reservationType,
+                newStatus,
+                this.duration,
+                this.startTime,
+                newEndTime,
+                this.notes,
+                this.creationDate,
+                now,
+                this.queueEntryTime
+        );
+    }
+
     public Reservation marcarNoShow() {
         if (status == ReservationStatus.COMPLETED || status == ReservationStatus.CANCELLED) {
             throw new BusinessExceptions(ReservationMessageExceptions.INVALID_RESERVATION_STATUS);

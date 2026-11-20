@@ -17,6 +17,7 @@ import com.smartbarber.domain.port.reservation.ServiceReservationPort;
 import com.smartbarber.infrastructure.drivenadapter.email.EmailService;
 import com.smartbarber.application.usecase.nonworkingday.BarbershopCalendar;
 import com.smartbarber.application.usecase.nonworkingday.FindNonWorkingDaysUC;
+import com.smartbarber.application.usecase.employee.FindBookableBarbersUC;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
@@ -45,10 +46,10 @@ public class CreateReservationUc {
     private final CustomerPort customerPort;
     private final EmailService emailService;
     private final FindNonWorkingDaysUC findNonWorkingDaysUC;
-    private final BarbershopCalendar barbershopCalendar;
+        private final BarbershopCalendar barbershopCalendar;
+    private final FindBookableBarbersUC findBookableBarbersUC;
 
     public Mono<Reservation> createReservation(ReservationCommand command) {
-        System.out.println("Reservation command: " + command);
         return loadServices(command.reservationServiceId())
                 .flatMap(services -> {
                     Integer duration = getDuration(services);
@@ -104,7 +105,16 @@ public class CreateReservationUc {
                         command.barbershopId(),
                         barbershopCalendar.dateOf(command.startTime()));
 
-        return Mono.when(openDayValidation, employeeValidation, customerValidation);
+        // Solo barberos activos de la barbería (no bloqueados ni el administrador).
+        Mono<Void> bookableValidation = findBookableBarbersUC
+                .isBookable(command.employeeId(), command.barbershopId())
+                .flatMap(bookable -> Boolean.TRUE.equals(bookable)
+                        ? Mono.<Void>empty()
+                        : Mono.error(new BusinessExceptions(
+                                ReservationMessageExceptions.BARBER_NOT_BOOKABLE)));
+
+        return bookableValidation
+                .then(Mono.when(openDayValidation, employeeValidation, customerValidation));
     }
 
     private Mono<List<Service>> loadServices(List<Integer> serviceIds) {
@@ -300,7 +310,8 @@ public class CreateReservationUc {
                                 ServiceReservation.createServiceReservation(
                                         reservation.getId(),
                                         service.getId(),
-                                        service.getDuration()
+                                        service.getDuration(),
+                                        service.effectivePrice()
                                 )))
                 .then();
     }

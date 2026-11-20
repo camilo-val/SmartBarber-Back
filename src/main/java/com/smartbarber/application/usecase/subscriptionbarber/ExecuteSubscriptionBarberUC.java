@@ -39,10 +39,7 @@ public class ExecuteSubscriptionBarberUC {
                             .flatMap(planSubscription ->
                         renewSubscriptionUC.renewSubscriptionBarbershop(barbershop,planSubscription));
             case SubscriptionType.EXPIRED ->
-                    expiredSubscriptionUc.expiredSubscription(barbershop)
-                            .filter(subscription -> subscription.getStatus() == SubscriptionBarberStatus.APPROVED)
-                            .flatMap(approvedSubscription -> port.save(approvedSubscription.processPaymentResult(SubscriptionBarberStatus.ACTIVE)))
-                            .next();
+                    expiredSubscriptionUc.expireAndActivateNext(barbershop.barberId());
             default ->
                 throw new BusinessExceptions(SubscriptionBarberMessageExceptions.INVALID_SUBSCRIPTION_BARBER);
         };

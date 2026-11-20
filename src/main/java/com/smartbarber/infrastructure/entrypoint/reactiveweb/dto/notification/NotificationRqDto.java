@@ -9,10 +9,10 @@ import java.util.UUID;
 
 public record NotificationRqDto(
 
-        @NotNull(message = "Customer ID cannot be null")
+        @NotNull(message = "El cliente es obligatorio")
         UUID customerId,
 
-        @NotNull(message = "Reservation ID cannot be null")
+        @NotNull(message = "La reserva es obligatoria")
         UUID reservationId,
 
         @NotBlank(message = "Title cannot be blank")

@@ -43,6 +43,14 @@ public class ReservationRouter {
                 .andRoute(
                         RequestPredicates.PATCH(RESERVATION + "/{id}/cancel"),
                         reservationHandler::cancelReservation
+                )
+                .andRoute(
+                        RequestPredicates.PATCH(RESERVATION + "/{id}/complete"),
+                        reservationHandler::completeReservation
+                )
+                .andRoute(
+                        RequestPredicates.PATCH(RESERVATION + "/{id}/no-show"),
+                        reservationHandler::markNoShow
                 );
     }
 }

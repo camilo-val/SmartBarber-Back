@@ -27,6 +27,9 @@ public class ServiceReservationEntity {
     private ServiceReservationStatus status;
     @Column("duracion")
     private int duration;
+    /** Precio cobrado al reservar (script db/precio_reserva_servicio.sql). */
+    @Column("precio")
+    private Integer price;
     @Column("fecha_creacion")
     private Instant createdAt;
     @Column("fecha_modificacion")

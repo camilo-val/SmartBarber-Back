@@ -16,6 +16,7 @@ public interface ServiceReservationMapper {
                 entity.getServiceId(),
                 entity.getStatus(),
                 entity.getDuration(),
+                entity.getPrice(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );

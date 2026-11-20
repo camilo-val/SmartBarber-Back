@@ -8,19 +8,19 @@ import java.util.UUID;
 
 @Builder
 public record ServiceRqDto (
-        @NotNull(message = "El id de la barberia es obligatorio")
+        @NotNull(message = "El id de la barbería es obligatorio")
         UUID barberiaId,
 
         @NotBlank(message = "El nombre es obligatorio")
         String name,
 
-        @NotBlank(message = "La descripcion es obligatorio")
+        @NotBlank(message = "La descripción es obligatoria")
         String description,
 
-        @NotNull(message = "La duracion es obligatoria")
+        @NotNull(message = "La duración es obligatoria")
         Integer duration,
 
-        @NotNull(message = "El precio es obligatoria")
+        @NotNull(message = "El precio es obligatorio")
         Integer price,
 
         @NotNull(message = "Debe indicar si el servicio tiene oferta")

@@ -22,8 +22,9 @@ import java.util.stream.Collectors;
  * Lee las reservas de una barbería para las estadísticas con dos consultas
  * (reservas y servicios), en lugar de una consulta por reserva.
  *
- * <p>El ingreso de cada servicio usa el precio vigente del servicio (precio de
- * oferta si está en oferta), porque las reservas no guardan el precio cobrado.
+ * <p>El ingreso de cada servicio usa el precio cobrado al reservar
+ * (reserva_servicio.precio); en reservas anteriores a ese dato, el precio
+ * vigente del servicio (de oferta si está en oferta).
  */
 @Slf4j
 @Component
@@ -51,8 +52,9 @@ public class StatisticsAdapter implements StatisticsPort {
 
     private static final String SERVICES_SQL = """
             SELECT rs.id_reserva, s.id_servicio, s.nombre, rs.duracion,
-                   CASE WHEN s.oferta AND s.precio_oferta IS NOT NULL THEN s.precio_oferta
-                        ELSE s.precio END AS precio
+                   COALESCE(rs.precio,
+                            CASE WHEN s.oferta AND s.precio_oferta IS NOT NULL THEN s.precio_oferta
+                                 ELSE s.precio END) AS precio
               FROM public.reserva_servicio rs
               JOIN public.servicio s ON s.id_servicio = rs.id_servicio
               JOIN public.reserva r ON r.id_reserva = rs.id_reserva

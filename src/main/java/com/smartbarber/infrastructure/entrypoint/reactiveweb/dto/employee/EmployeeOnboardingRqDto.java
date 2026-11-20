@@ -15,7 +15,7 @@ import java.util.UUID;
 public record EmployeeOnboardingRqDto (
         @NotNull(message = "El id del usuario es obligatorio")
         UserRqDto user,
-        @NotNull(message = "El id de la barberia es obligatorio")
+        @NotNull(message = "El id de la barbería es obligatorio")
         UUID barberiaId,
         @NotBlank(message = "El nombre es obligatorio")
         String name,
@@ -23,13 +23,13 @@ public record EmployeeOnboardingRqDto (
         String document,
         @NotNull
         DocumentType documentType,
-        @NotBlank(message = "El celuar es obligatorio")
-        @Pattern(regexp = "^[0-9]{10}$", message = "El celular no puede ser allfanumerico y debe tener 10 digitos")
+        @NotBlank(message = "El celular es obligatorio")
+        @Pattern(regexp = "^[0-9]{10}$", message = "El celular debe tener exactamente 10 dígitos, sin letras ni espacios")
         String cell,
-        @NotBlank(message = "El Correo es obligatorio")
+        @NotBlank(message = "El correo es obligatorio")
         @Email(message = "El correo no tiene un formato válido")
         String email,
-        @NotBlank(message = "La especialidad es obligatorio")
+        @NotBlank(message = "La especialidad es obligatoria")
         String specialty
     ){
 

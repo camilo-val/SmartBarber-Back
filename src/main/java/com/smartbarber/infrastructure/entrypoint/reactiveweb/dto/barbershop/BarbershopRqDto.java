@@ -9,16 +9,16 @@ import lombok.Builder;
 
 @Builder
 public record BarbershopRqDto(
-        @NotBlank(message = "El name es obligatorio")
+        @NotBlank(message = "El nombre es obligatorio")
         String name,
-        @NotBlank(message = "La description es obligatoria")
+        @NotBlank(message = "La descripción es obligatoria")
         String description,
-        @NotBlank(message = "La location es obligatoria")
+        @NotBlank(message = "La ubicación es obligatoria")
         String location,
-        @NotBlank(message = "El celuar es obligatorio")
-        @Pattern(regexp = "^[0-9]{10}$", message = "El cell no puede ser allfanumerico y debe tener 10 digitos")
+        @NotBlank(message = "El celular es obligatorio")
+        @Pattern(regexp = "^[0-9]{10}$", message = "El celular debe tener exactamente 10 dígitos, sin letras ni espacios")
         String phone,
-        @NotBlank(message = "El document es obligatorio")
+        @NotBlank(message = "El documento es obligatorio")
         String document,
         @NotNull
         DocumentType documentType,

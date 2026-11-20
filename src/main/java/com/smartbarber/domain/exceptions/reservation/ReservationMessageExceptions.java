@@ -15,7 +15,11 @@ public enum ReservationMessageExceptions implements ErrorMessage {
     RESERVATION_DATE_INVALID("RES_010", "La fecha de la reserva no es válida"),
     EMPLOYEE_NOT_AVAILABLE("RES_011", "El empleado no está disponible en este horario"),
     CANNOT_CONFIRM_RESERVATION("RES_012", "No se puede confirmar una reserva en este estado"),
-    QUEUE_NOT_ACCEPTING_CLIENTS("RES_013", "Queue not accepting customers");
+    QUEUE_NOT_ACCEPTING_CLIENTS("RES_013", "Queue not accepting customers"),
+    BARBER_NOT_BOOKABLE("RES_014", "El barbero no está disponible para recibir reservas"),
+    CANNOT_COMPLETE_RESERVATION("RES_015", "Solo se puede finalizar una reserva confirmada o en atención"),
+    RESERVATION_NOT_STARTED("RES_016", "La reserva todavía no ha comenzado"),
+    CANNOT_MARK_NO_SHOW("RES_017", "Solo se puede registrar la inasistencia de una reserva agendada pendiente o confirmada");
 
     private final String code;
     private final String message;

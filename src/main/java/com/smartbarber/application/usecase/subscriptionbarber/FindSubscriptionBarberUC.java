@@ -28,18 +28,15 @@ public class FindSubscriptionBarberUC {
         return port.findById(id).switchIfEmpty(Mono.error(() -> new BusinessExceptions(SubscriptionBarberMessageExceptions.SUBSCRIPTION_BARBER_NOT_FOUND)));
     }
 
+    /** Suscripciones ACTIVE con renovación automática que vencen en el rango. */
     public Flux<SubscriptionBarbershop> findAllAutomaticRenewSubscriptions(Instant initialDate, Instant finalDate) {
-        return port.findByStatusAndAutomaticRenew(initialDate, finalDate, true);
+        return port.findActiveSubscriptionsExpiringBetween(initialDate, finalDate)
+                .filter(subscription -> Boolean.TRUE.equals(subscription.getAutomaticRenew()));
     }
 
+    /** Suscripciones ACTIVE cuya fecha de vencimiento ya pasó. */
     public Flux<SubscriptionBarbershop> findExpiredSubscriptions() {
-        System.out.println(Instant.now());
-        port.findByExpirationDate(Instant.now()).hasElements()
-                .map(e -> {
-                    System.out.println("Found expired subscription: " + e);
-                    return e;
-                });
-        return port.findByExpirationDate(Instant.now()).doOnNext(subscription -> System.out.println("Found expired subscription: " + subscription));
+        return port.findByExpirationDate(Instant.now());
     }
 
     public Flux<SubscriptionBarbershop> findSubscriptionsByBarberIdAndStatus(UUID barberId, SubscriptionBarberStatus status) {

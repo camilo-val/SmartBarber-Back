@@ -11,6 +11,21 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class SubscriptionBarbershop {
+
+    /**
+     * Vigencia de un periodo de suscripción, en días. Los planes de SmartBarber
+     * se cobran por mes; la duración no se acepta del cliente para que nadie
+     * pueda pagar un mes y obtener más tiempo de vigencia.
+     */
+    public static final int PLAN_DURATION_DAYS = 30;
+
+    /** Indica si la suscripción activa ya llegó a su fecha de vencimiento. */
+    public boolean isOverdue(Instant now) {
+        return status == SubscriptionBarberStatus.ACTIVE
+                && expirationDate != null
+                && !expirationDate.isAfter(now);
+    }
+
     private final UUID id;
     private final UUID barberId;
     private final Integer subscriptionId;
@@ -63,7 +78,6 @@ public class SubscriptionBarbershop {
                                                  Instant createdAt, Instant updatedAt,
                                                  Instant initialDate, Instant finalDate){
 
-        System.out.println("SubscriptionBarbershop.rebuild -> status: " + automaticRenew);
 
         boolean attributeIsNull =  isNull(id) || isNull(barberId) || isNull(subscriptionId) || isNull(duration) || isNull(createdAt);
 
@@ -76,7 +90,6 @@ public class SubscriptionBarbershop {
     }
 
     public SubscriptionBarbershop processPaymentResult(SubscriptionBarberStatus status){
-        System.out.println("SubscriptionBarbershop.processPaymentResult -> status: " + this.automaticRenew);
         Instant now = Instant.now();
         boolean attributeIsNull = isNull(barberId) || isNull(subscriptionId) || isNull(duration);
 

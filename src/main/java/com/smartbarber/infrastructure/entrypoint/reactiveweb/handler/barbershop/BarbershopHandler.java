@@ -108,9 +108,27 @@ public class BarbershopHandler {
     }
 
     public Mono<ServerResponse> test(ServerRequest request) {
-        return Mono.fromCallable(() -> {
-            boolean result = mailSender.testConnection();
-            return result ? "SMTP OK" : "SMTP ERROR";
-        }).flatMap(response -> ServerResponse.ok().bodyValue(response));
+
+        return mailSender.sendEmail(
+                        request.pathVariable("email"),
+                        "Prueba SMTP",
+                        "Correo enviado desde Render"
+                )
+                .then(ServerResponse.ok().bodyValue("OK"))
+                .onErrorResume(ex -> {
+
+                    Throwable cause = ex;
+
+                    while (cause.getCause() != null) {
+                        cause = cause.getCause();
+                    }
+
+                    return ServerResponse.ok().bodyValue(
+                            "ROOT ERROR -> "
+                                    + cause.getClass().getName()
+                                    + " : "
+                                    + cause.getMessage()
+                    );
+                });
     }
 }

@@ -122,6 +122,8 @@ class SecurityConfigRulesTest {
             "ADMIN,    PATCH,  /reservation-service/ID/no-show,                 200",
             "CUSTOMER, PATCH,  /reservation-service/ID/complete,                403",
             "CUSTOMER, PATCH,  /reservation-service/ID/no-show,                 403",
+            "CUSTOMER, PATCH,  /reservation-service/ID/reschedule,              200",
+            "BARBER,   PATCH,  /reservation-service/ID/reschedule,              403",
             "CUSTOMER, GET,    /services-service/barberia/ID,                   200",
             "CUSTOMER, GET,    /schedule-service/empleado/ID,                   200",
             "CUSTOMER, POST,   /api/v1/queue/join,                              200",

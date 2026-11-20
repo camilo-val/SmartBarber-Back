@@ -24,6 +24,9 @@ import reactor.core.publisher.Mono;
 
 import com.smartbarber.domain.enums.ReservationStatus;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 
 @Component
@@ -161,6 +164,30 @@ public class FindReservationUc {
     private static boolean isNotFound(Throwable error) {
         return error instanceof BusinessExceptions business
                 && business.getExceptionMessage() == ReservationMessageExceptions.RESERVATION_NOT_FOUND;
+    }
+
+        /** Consultas simultáneas al buscar los servicios de un listado. */
+    private static final int SERVICE_LOOKUP_CONCURRENCY = 8;
+
+    /**
+     * Nombres de los servicios de cada reserva (id de reserva → nombres), para
+     * mostrar el servicio real en los historiales. Cada servicio se consulta
+     * una sola vez aunque aparezca en varias reservas.
+     */
+    public Mono<Map<UUID, List<String>>> serviceNamesOf(List<Reservation> reservations) {
+        Map<Integer, Mono<String>> nameCache = new ConcurrentHashMap<>();
+
+        return Flux.fromIterable(reservations)
+                .flatMap(reservation -> serviceReservationPort.findByReservationId(reservation.getId())
+                                .concatMap(line -> nameCache.computeIfAbsent(line.getServiceId(),
+                                        id -> servicePort.findById(id)
+                                                .map(service -> service.getName())
+                                                .defaultIfEmpty("Servicio")
+                                                .cache()))
+                                .collectList()
+                                .map(names -> Map.entry(reservation.getId(), names)),
+                        SERVICE_LOOKUP_CONCURRENCY)
+                .collectMap(Map.Entry::getKey, Map.Entry::getValue);
     }
 
     private Mono<Authentication> currentUser() {

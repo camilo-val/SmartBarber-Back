@@ -12,7 +12,8 @@ public record AuthorizationRsDto (
         UUID userId,
         UUID employeeId,
         BarbershopSubscriptionRsDto barbershop,
-        UUID customerId
-
+        UUID customerId,
+        /** Nombre registrado en el perfil (cliente o empleado), para saludar al usuario. */
+        String displayName
 ){
 }

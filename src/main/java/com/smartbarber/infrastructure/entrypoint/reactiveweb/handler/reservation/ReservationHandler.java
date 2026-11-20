@@ -1,5 +1,10 @@
 package com.smartbarber.infrastructure.entrypoint.reactiveweb.handler.reservation;
 
+import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.reservation.ReservationSummaryRsDto;
+import java.util.List;
+import com.smartbarber.application.usecase.reservation.servicereservation.RescheduleReservationUc;
+import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.reservation.RescheduleReservationRqDto;
+import com.smartbarber.infrastructure.entrypoint.utils.validateRequest;
 import com.smartbarber.domain.model.reservation.Reservation;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.reservation.OccupiedSlotRsDto;
 import reactor.core.publisher.Flux;
@@ -25,7 +30,9 @@ public class ReservationHandler {
 
     private final CreateReservationUc createReservationUc;
     private final FindReservationUc findReservationUc;
-    private final ChangeReservationStatusUc changeReservationStatusUc;
+        private final ChangeReservationStatusUc changeReservationStatusUc;
+    private final RescheduleReservationUc rescheduleReservationUc;
+    private final validateRequest validateRequest;
 
     public Mono<ServerResponse> createReservation(ServerRequest request) {
         System.out.println("ASDASDSADS");
@@ -60,7 +67,7 @@ public class ReservationHandler {
         String id = request.pathVariable("customerId");
         return findReservationUc.findByCustomerId(UUID.fromString(id))
                 .collectList()
-                .flatMap(reservations -> ServerResponse.ok().bodyValue(reservations));
+                .flatMap(this::withServices);
     }
 
     public Mono<ServerResponse> getReservationByBarberId(ServerRequest request) {
@@ -78,7 +85,15 @@ public class ReservationHandler {
                         ? ServerResponse.ok().bodyValue(data.getT2().stream()
                                 .map(OccupiedSlotRsDto::from)
                                 .toList())
-                        : ServerResponse.ok().bodyValue(data.getT2()));
+                        : withServices(data.getT2()));
+    }
+
+    /** Historial con el nombre de los servicios de cada reserva. */
+    private Mono<ServerResponse> withServices(List<Reservation> reservations) {
+        return findReservationUc.serviceNamesOf(reservations)
+                .flatMap(names -> ServerResponse.ok().bodyValue(reservations.stream()
+                        .map(reservation -> ReservationSummaryRsDto.of(reservation, names.get(reservation.getId())))
+                        .toList()));
     }
 
     public Mono<ServerResponse> confirmReservation(ServerRequest request) {
@@ -99,6 +114,17 @@ public class ReservationHandler {
         UUID reservationId = UUID.fromString(request.pathVariable("id"));
 
         return changeReservationStatusUc.completeReservation(reservationId)
+                .flatMap(reservation -> ServerResponse.ok().bodyValue(reservation));
+    }
+
+        /** PATCH /reservation-service/{id}/reschedule  { "startTime": "..." } */
+    public Mono<ServerResponse> rescheduleReservation(ServerRequest request) {
+        UUID reservationId = UUID.fromString(request.pathVariable("id"));
+
+        return request.bodyToMono(RescheduleReservationRqDto.class)
+                .switchIfEmpty(Mono.error(() -> new IllegalArgumentException("Cuerpo vacío")))
+                .doOnNext(validateRequest::validate)
+                .flatMap(body -> rescheduleReservationUc.reschedule(reservationId, body.startTime()))
                 .flatMap(reservation -> ServerResponse.ok().bodyValue(reservation));
     }
 

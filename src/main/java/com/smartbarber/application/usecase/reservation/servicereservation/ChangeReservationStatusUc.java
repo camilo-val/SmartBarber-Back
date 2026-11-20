@@ -7,6 +7,10 @@ import com.smartbarber.domain.model.notification.Notification;
 import com.smartbarber.domain.model.reservation.Reservation;
 import com.smartbarber.application.usecase.security.AuthorizationAccessRules;
 import com.smartbarber.domain.port.authentication.CurrentAuthenticationPort;
+import com.smartbarber.domain.model.authentication.Authentication;
+import org.springframework.beans.factory.annotation.Value;
+import java.time.Duration;
+import java.util.function.BiFunction;
 import com.smartbarber.domain.port.CustomerPort;
 import com.smartbarber.domain.port.NotificationPort;
 import com.smartbarber.domain.port.reservation.ReservationRepositoryPort;
@@ -32,12 +36,20 @@ public class ChangeReservationStatusUc {
     private final CustomerPort customerPort;
     private final NotificationPort notificationPort;
         private final EmailService emailService;
-    private final CurrentAuthenticationPort currentAuthenticationPort;
+        private final CurrentAuthenticationPort currentAuthenticationPort;
+
+    /** Anticipación mínima con que el cliente puede cancelar o reprogramar. */
+    @Value("${reservation.customer-change-notice-minutes:60}")
+    private long customerChangeNoticeMinutes;
+
+    Duration customerChangeNotice() {
+        return Duration.ofMinutes(customerChangeNoticeMinutes);
+    }
 
     public Mono<Reservation> confirmReservation(UUID reservationId) {
         return changeStatus(
                 reservationId,
-                Reservation::confirmar,
+                (user, reservation) -> reservation.confirmar(),
                 "¡Tu reserva ha sido confirmada!",
                 "RESERVATION_CONFIRMED",
                 "¡Tenemos excelentes noticias!\n\n"
@@ -54,7 +66,13 @@ public class ChangeReservationStatusUc {
     public Mono<Reservation> cancelReservation(UUID reservationId) {
         return changeStatus(
                 reservationId,
-                Reservation::cancelar,
+                (user, reservation) -> {
+                    // El cliente debe cancelar con la anticipación mínima (RES_018).
+                    if (AuthorizationAccessRules.isCustomer(user)) {
+                        reservation.ensureChangeAllowed(OffsetDateTime.now(), customerChangeNotice());
+                    }
+                    return reservation.cancelar();
+                },
                 "Notificación de cancelación de reserva",
                 "RESERVATION_CANCELLED",
                 "Te informamos que tu reserva en SmartBarber ha sido cancelada correctamente.\n\n"
@@ -71,7 +89,7 @@ public class ChangeReservationStatusUc {
     public Mono<Reservation> completeReservation(UUID reservationId) {
         return changeStatus(
                 reservationId,
-                reservation -> reservation.finalizar(OffsetDateTime.now()),
+                (user, reservation) -> reservation.finalizar(OffsetDateTime.now()),
                 "¡Gracias por tu visita!",
                 "RESERVATION_COMPLETED",
                 "Tu servicio en SmartBarber fue finalizado.\n\n"
@@ -84,7 +102,7 @@ public class ChangeReservationStatusUc {
     public Mono<Reservation> markNoShow(UUID reservationId) {
         return changeStatus(
                 reservationId,
-                reservation -> reservation.registrarInasistencia(OffsetDateTime.now()),
+                (user, reservation) -> reservation.registrarInasistencia(OffsetDateTime.now()),
                 null,
                 null,
                 null
@@ -93,7 +111,7 @@ public class ChangeReservationStatusUc {
 
     private Mono<Reservation> changeStatus(
             UUID reservationId,
-            java.util.function.Function<Reservation, Reservation> statusTransition,
+            BiFunction<Authentication, Reservation, Reservation> statusTransition,
             String notificationTitle,
             String eventType,
             String message
@@ -109,9 +127,10 @@ public class ChangeReservationStatusUc {
                 .flatMap(reservation -> currentAuthenticationPort.getCurrentAuthentication()
                         .switchIfEmpty(Mono.error(() -> new BusinessExceptions(
                                 ReservationMessageExceptions.RESERVATION_NOT_FOUND)))
-                        .doOnNext(user -> AuthorizationAccessRules.validateReservationAccess(user, reservation))
-                        .thenReturn(reservation))
-                .map(statusTransition)
+                        .map(user -> {
+                            AuthorizationAccessRules.validateReservationAccess(user, reservation);
+                            return statusTransition.apply(user, reservation);
+                        }))
                 .flatMap(reservationRepositoryPort::save)
                 .flatMap(reservation -> message == null
                         ? Mono.just(reservation)
@@ -124,7 +143,8 @@ public class ChangeReservationStatusUc {
                 );
     }
 
-    private Mono<Void> createNotificationAndSendEmail(
+    /** Registra la notificación y envía el correo al cliente de la reserva. */
+    Mono<Void> createNotificationAndSendEmail(
             Reservation reservation,
             String title,
             String eventType,

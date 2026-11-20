@@ -6,6 +6,7 @@ import com.smartbarber.domain.exceptions.BusinessExceptions;
 import com.smartbarber.domain.exceptions.reservation.ReservationMessageExceptions;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -54,5 +55,41 @@ class ReservationStatusTransitionsTest {
         BusinessExceptions error = assertThrows(BusinessExceptions.class,
                 () -> scheduled(ReservationStatus.CANCELLED, NOW.minusMinutes(10)).registrarInasistencia(NOW));
         assertEquals(ReservationMessageExceptions.CANNOT_MARK_NO_SHOW, error.getExceptionMessage());
+    }
+
+    private static final Duration NOTICE = Duration.ofMinutes(60);
+
+    @Test
+    void reprogramaConservandoLaDuracionYVuelveAPendiente() {
+        Reservation moved = scheduled(ReservationStatus.CONFIRMED, NOW.plusDays(1))
+                .reprogramar(NOW.plusDays(2), NOW, NOTICE);
+        assertEquals(ReservationStatus.PENDING, moved.getStatus());
+        assertEquals(NOW.plusDays(2), moved.getStartTime());
+        assertEquals(NOW.plusDays(2).plusMinutes(30), moved.getEndTime());
+    }
+
+    @Test
+    void noReprogramaSinLaAnticipacionMinima() {
+        BusinessExceptions error = assertThrows(BusinessExceptions.class,
+                () -> scheduled(ReservationStatus.CONFIRMED, NOW.plusMinutes(20))
+                        .reprogramar(NOW.plusDays(1), NOW, NOTICE));
+        assertEquals(ReservationMessageExceptions.TOO_LATE_TO_CHANGE, error.getExceptionMessage());
+    }
+
+    @Test
+    void noReprogramaAUnaHoraDemasiadoCercana() {
+        BusinessExceptions error = assertThrows(BusinessExceptions.class,
+                () -> scheduled(ReservationStatus.PENDING, NOW.plusDays(1))
+                        .reprogramar(NOW.plusMinutes(10), NOW, NOTICE));
+        assertEquals(ReservationMessageExceptions.INVALID_NEW_DATE, error.getExceptionMessage());
+    }
+
+    @Test
+    void detectaCrucesDeHorario() {
+        Reservation booked = scheduled(ReservationStatus.CONFIRMED, NOW.plusDays(1));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                booked.overlaps(NOW.plusDays(1).plusMinutes(15), NOW.plusDays(1).plusMinutes(45)));
+        org.junit.jupiter.api.Assertions.assertFalse(
+                booked.overlaps(NOW.plusDays(1).plusMinutes(30), NOW.plusDays(1).plusMinutes(60)));
     }
 }

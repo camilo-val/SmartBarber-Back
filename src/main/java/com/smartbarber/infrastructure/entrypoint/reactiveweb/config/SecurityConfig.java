@@ -257,6 +257,13 @@ public class SecurityConfig {
                         )
 
                         .pathMatchers(HttpMethod.PATCH,
+                                "/reservation-service/*/reschedule"
+                        ).hasAnyRole(
+                                RoleType.CUSTOMER.name(),
+                                RoleType.ADMIN.name()
+                        )
+
+                        .pathMatchers(HttpMethod.PATCH,
                                 "/reservation-service/*/confirm",
                                 "/reservation-service/*/complete",
                                 "/reservation-service/*/no-show"

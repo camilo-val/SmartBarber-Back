@@ -51,6 +51,10 @@ public class ReservationRouter {
                 .andRoute(
                         RequestPredicates.PATCH(RESERVATION + "/{id}/no-show"),
                         reservationHandler::markNoShow
+                )
+                .andRoute(
+                        RequestPredicates.PATCH(RESERVATION + "/{id}/reschedule"),
+                        reservationHandler::rescheduleReservation
                 );
     }
 }

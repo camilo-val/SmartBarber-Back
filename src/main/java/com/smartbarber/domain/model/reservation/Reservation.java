@@ -357,6 +357,62 @@ public class Reservation {
         return withStatus(ReservationStatus.NO_SHOW, this.endTime, now);
     }
 
+        /**
+     * El cliente cambia la hora de una reserva agendada. Solo desde PENDING o
+     * CONFIRMED, con la anticipación mínima respecto a la hora actual y a la
+     * nueva. La reserva vuelve a PENDING para que el barbero la confirme.
+     */
+    public Reservation reprogramar(OffsetDateTime newStart, OffsetDateTime now, Duration minNotice) {
+        boolean scheduled = reservationType == ReservationType.SERVICE_RESERVATION;
+        boolean open = status == ReservationStatus.PENDING || status == ReservationStatus.CONFIRMED;
+        if (!scheduled || !open) {
+            throw new BusinessExceptions(ReservationMessageExceptions.CANNOT_RESCHEDULE);
+        }
+        ensureChangeAllowed(now, minNotice);
+        if (newStart == null || newStart.isBefore(now.plus(minNotice))) {
+            throw new BusinessExceptions(ReservationMessageExceptions.INVALID_NEW_DATE);
+        }
+        int minutes = duration != null && duration > 0
+                ? duration
+                : (int) Duration.between(startTime, endTime).toMinutes();
+        return new Reservation(
+                this.id,
+                this.customerId,
+                this.barbershopId,
+                this.employeeId,
+                this.reservationType,
+                ReservationStatus.PENDING,
+                this.duration,
+                newStart,
+                newStart.plusMinutes(minutes),
+                this.notes,
+                this.creationDate,
+                now,
+                this.queueEntryTime
+        );
+    }
+
+    /**
+     * El cliente solo puede cancelar o reprogramar con la anticipación mínima
+     * (RES_018). El personal de la barbería no tiene esta restricción.
+     */
+    public void ensureChangeAllowed(OffsetDateTime now, Duration minNotice) {
+        if (startTime != null && startTime.isBefore(now.plus(minNotice))) {
+            throw new BusinessExceptions(ReservationMessageExceptions.TOO_LATE_TO_CHANGE);
+        }
+    }
+
+    /** La reserva ocupa la agenda del barbero (no está cancelada ni hubo inasistencia). */
+    public boolean occupiesAgenda() {
+        return status != ReservationStatus.CANCELLED && status != ReservationStatus.NO_SHOW;
+    }
+
+    /** El horario de la reserva se cruza con el rango [start, end). */
+    public boolean overlaps(OffsetDateTime start, OffsetDateTime end) {
+        return startTime != null && endTime != null
+                && startTime.isBefore(end) && endTime.isAfter(start);
+    }
+
     private Reservation withStatus(ReservationStatus newStatus, OffsetDateTime newEndTime, OffsetDateTime now) {
         return new Reservation(
                 this.id,

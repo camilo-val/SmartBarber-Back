@@ -46,7 +46,6 @@ public class SubscriptionBarbershopAdapter implements SubscriptionBarbershopRepo
 
     @Override
     public Flux<SubscriptionBarbershop> findByExpirationDate(Instant expirationDate) {
-        System.out.println("SubscriptionBarbershopAdapter.findByExpirationDate: " + expirationDate);
         return data.findByExpirationDate(expirationDate)
                 .doOnNext(subscription -> log.info("Found subscription: {}", subscription))
                 .doOnError(error -> log.error("Error finding subscriptions: {}", error.getMessage(), error))

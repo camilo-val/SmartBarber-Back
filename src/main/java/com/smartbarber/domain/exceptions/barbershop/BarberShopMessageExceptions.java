@@ -7,7 +7,8 @@ public enum BarberShopMessageExceptions implements ErrorMessage{
     BARBERSHOP_ALREADY_EXIST("BP_002","barbershop already exists"),
     INVALID_DATA("BP_003","invalid data"),
     BARBER_NOT_FOUND("BP_004","barbershop not found"),
-    THE_BARBERSHOP_DOES_NOT_HAVE_AN_ACTIVE_SUBSCRIPTION("BP_005","barbershop does not have an active subscription");
+    THE_BARBERSHOP_DOES_NOT_HAVE_AN_ACTIVE_SUBSCRIPTION("BP_005","barbershop does not have an active subscription"),
+    FORBIDDEN("BP_006","the barbershop does not belong to the authenticated administrator");
 
     private final String code;
     private final String message;

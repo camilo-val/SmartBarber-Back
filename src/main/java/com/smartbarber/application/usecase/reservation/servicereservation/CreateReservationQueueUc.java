@@ -1,5 +1,7 @@
 package com.smartbarber.application.usecase.reservation.servicereservation;
 
+import com.smartbarber.application.usecase.employee.FindBookableBarbersUC;
+
 import com.smartbarber.application.command.in.reservation.ReservationCommand;
 import com.smartbarber.application.usecase.queue.QueueAvailabilityService;
 import com.smartbarber.application.usecase.queue.QueueBroadcastService;
@@ -47,15 +49,22 @@ public class CreateReservationQueueUc {
     private final CustomerPort customerPort;
     private final QueueAvailabilityService queueAvailabilityService;
     private final FindNonWorkingDaysUC findNonWorkingDaysUC;
-    private final BarbershopCalendar barbershopCalendar;
+        private final BarbershopCalendar barbershopCalendar;
+    private final FindBookableBarbersUC findBookableBarbersUC;
 
 
     public Mono<ReservationResponse> createReservation(ReservationCommand command) {
         validateCommand(command);
 
         // En un día no laborable de la barbería no se reciben turnos en la cola.
-        Mono<ReservationResponse> operation = findNonWorkingDaysUC
-                .ensureOpen(command.barbershopId(), barbershopCalendar.today())
+        Mono<ReservationResponse> operation = findBookableBarbersUC
+                .isBookable(command.employeeId(), command.barbershopId())
+                .flatMap(bookable -> Boolean.TRUE.equals(bookable)
+                        ? Mono.<Void>empty()
+                        : Mono.error(new BusinessExceptions(
+                                ReservationMessageExceptions.BARBER_NOT_BOOKABLE)))
+                .then(findNonWorkingDaysUC
+                        .ensureOpen(command.barbershopId(), barbershopCalendar.today()))
                 .then(barberQueuePort.findByEmployeeIdForUpdate(command.employeeId()))
                 .switchIfEmpty(Mono.error(new IllegalStateException(
                         "El barbero no tiene una cola configurada. Debe abrirla primero."
@@ -237,9 +246,10 @@ public class CreateReservationQueueUc {
                                 ServiceReservation.createServiceReservation(
                                         reservation.getId(),
                                         service.getId(),
-                                        service.getDuration()
+                                        service.getDuration(),
+                                        service.effectivePrice()
                                 )
-                          ).doOnNext(serviceReservation -> log.info("AAAServicio agregado a reserva. serviceReservationId={}, reservationId={}",
+                          ).doOnNext(serviceReservation -> log.info("Servicio agregado a reserva. serviceReservationId={}, reservationId={}",
                                 serviceReservation.getId(),
                                 reservation.getId()
                         ))

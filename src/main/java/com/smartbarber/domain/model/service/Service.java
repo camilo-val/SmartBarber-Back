@@ -200,6 +200,11 @@ public class Service {
     public Boolean getOffer() { return offer; }
     public Integer getPrice() { return price; }
     public Integer getSpecialPrice() { return specialPrice; }
+
+    /** Precio que se cobra hoy: el de oferta si el servicio está en oferta. */
+    public Integer effectivePrice() {
+        return Boolean.TRUE.equals(offer) && specialPrice != null ? specialPrice : price;
+    }
     public Instant getCreateAt() { return createAt; }
     public Instant getUpdateAt() { return updateAt; }
 }

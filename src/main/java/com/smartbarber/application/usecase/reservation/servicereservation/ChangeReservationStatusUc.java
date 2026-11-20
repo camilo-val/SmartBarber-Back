@@ -5,6 +5,8 @@ import com.smartbarber.domain.exceptions.reservation.ReservationMessageException
 import com.smartbarber.domain.model.customer.Customer;
 import com.smartbarber.domain.model.notification.Notification;
 import com.smartbarber.domain.model.reservation.Reservation;
+import com.smartbarber.application.usecase.security.AuthorizationAccessRules;
+import com.smartbarber.domain.port.authentication.CurrentAuthenticationPort;
 import com.smartbarber.domain.port.CustomerPort;
 import com.smartbarber.domain.port.NotificationPort;
 import com.smartbarber.domain.port.reservation.ReservationRepositoryPort;
@@ -18,6 +20,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Component
@@ -28,7 +31,8 @@ public class ChangeReservationStatusUc {
     private final ReservationRepositoryPort reservationRepositoryPort;
     private final CustomerPort customerPort;
     private final NotificationPort notificationPort;
-    private final EmailService emailService;
+        private final EmailService emailService;
+    private final CurrentAuthenticationPort currentAuthenticationPort;
 
     public Mono<Reservation> confirmReservation(UUID reservationId) {
         return changeStatus(
@@ -63,6 +67,30 @@ public class ChangeReservationStatusUc {
         );
     }
 
+        /** El barbero o el administrador finalizan la reserva atendida. */
+    public Mono<Reservation> completeReservation(UUID reservationId) {
+        return changeStatus(
+                reservationId,
+                reservation -> reservation.finalizar(OffsetDateTime.now()),
+                "¡Gracias por tu visita!",
+                "RESERVATION_COMPLETED",
+                "Tu servicio en SmartBarber fue finalizado.\n\n"
+                        + "Gracias por elegirnos. Desde tu historial de reservas puedes "
+                        + "calificar la atención que recibiste: tu opinión nos ayuda a mejorar."
+        );
+    }
+
+    /** El barbero o el administrador registran que el cliente no se presentó. */
+    public Mono<Reservation> markNoShow(UUID reservationId) {
+        return changeStatus(
+                reservationId,
+                reservation -> reservation.registrarInasistencia(OffsetDateTime.now()),
+                null,
+                null,
+                null
+        );
+    }
+
     private Mono<Reservation> changeStatus(
             UUID reservationId,
             java.util.function.Function<Reservation, Reservation> statusTransition,
@@ -76,10 +104,18 @@ public class ChangeReservationStatusUc {
                                 ReservationMessageExceptions.RESERVATION_NOT_FOUND
                         )
                 ))
+                // Solo el cliente de la reserva, su barbero o el administrador de la
+                // barbería pueden cambiarla (las rutas ya limitan qué rol hace qué).
+                .flatMap(reservation -> currentAuthenticationPort.getCurrentAuthentication()
+                        .switchIfEmpty(Mono.error(() -> new BusinessExceptions(
+                                ReservationMessageExceptions.RESERVATION_NOT_FOUND)))
+                        .doOnNext(user -> AuthorizationAccessRules.validateReservationAccess(user, reservation))
+                        .thenReturn(reservation))
                 .map(statusTransition)
                 .flatMap(reservationRepositoryPort::save)
-                .flatMap(reservation ->
-                        createNotificationAndSendEmail(
+                .flatMap(reservation -> message == null
+                        ? Mono.just(reservation)
+                        : createNotificationAndSendEmail(
                                 reservation,
                                 notificationTitle,
                                 eventType,

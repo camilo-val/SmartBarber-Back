@@ -129,15 +129,23 @@ public class SecurityConfig {
                                 "/public/employee-service/onboarding"
                         ).hasRole(RoleType.ADMIN.name())
 
-                        // CUSTOMER no tiene acceso a esta consulta.
-                                // Consultar empleados de una barbería
-                                .pathMatchers(HttpMethod.GET,
-                                        "/public/employee-service/barbershop/**"
-                                ).hasAnyRole(
-                                        RoleType.CUSTOMER.name(),
-                                        RoleType.BARBER.name(),
-                                        RoleType.ADMIN.name()
-                                )
+                        // Barberos que el cliente puede reservar (sin datos personales).
+                        .pathMatchers(HttpMethod.GET,
+                                "/public/employee-service/barbershop/*/bookable"
+                        ).hasAnyRole(
+                                RoleType.CUSTOMER.name(),
+                                RoleType.BARBER.name(),
+                                RoleType.ADMIN.name()
+                        )
+
+                        // Listado completo del equipo (incluye documento, correo y
+                        // celular): solo para el personal de la barbería.
+                        .pathMatchers(HttpMethod.GET,
+                                "/public/employee-service/barbershop/**"
+                        ).hasAnyRole(
+                                RoleType.BARBER.name(),
+                                RoleType.ADMIN.name()
+                        )
 
                                 // Consultas de empleados
                                 .pathMatchers(HttpMethod.GET,
@@ -248,7 +256,9 @@ public class SecurityConfig {
                         )
 
                         .pathMatchers(HttpMethod.PATCH,
-                                "/reservation-service/*/confirm"
+                                "/reservation-service/*/confirm",
+                                "/reservation-service/*/complete",
+                                "/reservation-service/*/no-show"
                         ).hasAnyRole(
                                 RoleType.BARBER.name(),
                                 RoleType.ADMIN.name()

@@ -20,7 +20,7 @@ public class RenewSubscriptionUC {
     private final CreateTransactionUC transactionUC;
 
     public  Mono<SubscriptionBarbershop> renewSubscriptionBarbershop(SubscriptionBarbershopCommand subscription, Subscription planSubscription){
-        return repositoryPort.existsSubscriptionsPendingOrApproved(subscription.barberId()).doOnNext(count -> System.out.println("Count: " + count))
+        return repositoryPort.existsSubscriptionsPendingOrApproved(subscription.barberId())
                 .flatMap(subscriptionBarbershops -> {
                     if (Boolean.TRUE.equals(subscriptionBarbershops)){
                         return Mono.error(() ->
@@ -28,7 +28,7 @@ public class RenewSubscriptionUC {
                     }
 
                    return repositoryPort.save(SubscriptionBarbershop.create(subscription.barberId(),
-                                   planSubscription.getId(), subscription.duration(),
+                                   planSubscription.getId(), SubscriptionBarbershop.PLAN_DURATION_DAYS,
                                    planSubscription.getPrice(),planSubscription.getDiscount(),subscription.automaticRenew()))
                            .flatMap( subscriptionRenew -> transactionUC.createAndSendTransaction(subscriptionRenew.getId(), subscriptionRenew.getSubscriptionPrice(), subscriptionRenew.getSubscriptionDiscount())
                                    .thenReturn(subscriptionRenew));

@@ -3,10 +3,12 @@ package com.smartbarber.infrastructure.entrypoint.reactiveweb.handler.employee;
 import com.smartbarber.application.usecase.athentication.AuthenticationUC;
 import com.smartbarber.application.usecase.employee.CreateEmployeeUC;
 import com.smartbarber.application.usecase.employee.EmployeeAccessUC;
+import com.smartbarber.application.usecase.employee.FindBookableBarbersUC;
 import com.smartbarber.application.usecase.employee.SearchEmployeeUC;
 import com.smartbarber.application.usecase.employee.UpdateEmployeeUC;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.employee.EmployeeOnboardingRqDto;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.employee.EmployeeAccessRqDto;
+import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.employee.BookableBarberRsDto;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.employee.EmployeeRqDto;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.employee.TeamMemberRsDto;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.exception.TechnicalExceptions;
@@ -37,7 +39,8 @@ public class EmployeeHandler {
     private final validateRequest validateRequest;
     private final UpdateEmployeeUC updateEmployeeUC;
     private final SearchEmployeeUC searchEmployeeUC;
-    private final AuthenticationUC authenticationUc;
+        private final AuthenticationUC authenticationUc;
+    private final FindBookableBarbersUC findBookableBarbersUC;
 
     public Mono<ServerResponse> createEmployee(ServerRequest request){
         return request.bodyToMono(EmployeeRqDto.class)
@@ -94,6 +97,17 @@ public class EmployeeHandler {
                 .map(mapper::toResponse)
                 .flatMap(response -> ServerResponse.accepted().bodyValue(response));
     }
+        /**
+     * GET /public/employee-service/barbershop/{barberId}/bookable — barberos que
+     * el cliente puede reservar (cuenta activa y rol BARBER), sin datos personales.
+     */
+    public Mono<ServerResponse> findBookableBarbers(ServerRequest request) {
+        return findBookableBarbersUC.findByBarbershop(UUID.fromString(request.pathVariable("barberId")))
+                .map(BookableBarberRsDto::from)
+                .collectList()
+                .flatMap(barbers -> ServerResponse.ok().bodyValue(barbers));
+    }
+
     /** GET /employee-service/team — equipo de la barbería del administrador, con el estado de cada cuenta. */
     public Mono<ServerResponse> findTeam(ServerRequest request) {
         return employeeAccessUC.findTeam()

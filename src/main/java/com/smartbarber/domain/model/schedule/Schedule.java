@@ -52,6 +52,8 @@ public class Schedule {
                 vacation
         );
 
+        validateRanges(startTime, endTime, lunchStartTime, lunchEndTime, vacation);
+
         return new Schedule(
                 null,
                 empleadoId,
@@ -80,6 +82,8 @@ public class Schedule {
                 lunchEndTime,
                 vacation
         );
+
+        validateRanges(startTime, endTime, lunchStartTime, lunchEndTime, vacation);
 
         return new Schedule(
                 id,
@@ -135,7 +139,6 @@ public class Schedule {
             Boolean vacation
     ) {
 
-        System.out.println("Validating inputs: " + startTime + ", " + endTime + ", " + lunchStartTime + ", " + lunchEndTime + ", " + vacation);
         if (vacation == null) {
             throw new BusinessExceptions(
                     ScheduleMessageExceptions.INVALID_DATA
@@ -166,6 +169,41 @@ public class Schedule {
         if (missingSchedule) {
             throw new BusinessExceptions(
                     ScheduleMessageExceptions.INVALID_DATA
+            );
+        }
+    }
+
+    /**
+     * Reglas de rango para los horarios que se crean o modifican. No se aplica
+     * al reconstruir desde la base de datos, para no romper la lectura de
+     * horarios guardados antes de existir esta validación.
+     */
+    private static void validateRanges(
+            LocalTime startTime,
+            LocalTime endTime,
+            LocalTime lunchStartTime,
+            LocalTime lunchEndTime,
+            Boolean vacation
+    ) {
+        if (Boolean.TRUE.equals(vacation)) {
+            return;
+        }
+
+        // La jornada debe empezar antes de terminar.
+        if (!startTime.isBefore(endTime)) {
+            throw new BusinessExceptions(
+                    ScheduleMessageExceptions.INVALID_WORKDAY_RANGE
+            );
+        }
+
+        // El almuerzo empieza antes de terminar y queda dentro de la jornada.
+        boolean lunchInsideWorkday = lunchStartTime.isBefore(lunchEndTime)
+                && !lunchStartTime.isBefore(startTime)
+                && !lunchEndTime.isAfter(endTime);
+
+        if (!lunchInsideWorkday) {
+            throw new BusinessExceptions(
+                    ScheduleMessageExceptions.LUNCH_OUTSIDE_WORKDAY
             );
         }
     }

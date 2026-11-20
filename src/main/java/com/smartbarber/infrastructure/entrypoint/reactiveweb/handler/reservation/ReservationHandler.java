@@ -41,9 +41,14 @@ public class ReservationHandler {
                 .flatMap(reservation -> ServerResponse.ok().bodyValue(reservation));
     }
 
+    /** GET /reservation-service/employee/{employeeId}[?date=AAAA-MM-DD] */
     public Mono<ServerResponse> getReservationByEmployeeId(ServerRequest request) {
-        String id = request.pathVariable("employeeId");
-        return findReservationUc.findByEmployeeId(UUID.fromString(id))
+        UUID employeeId = UUID.fromString(request.pathVariable("employeeId"));
+        var date = request.queryParam("date").map(ReservationHandler::parseDate);
+
+        return (date.isPresent()
+                        ? findReservationUc.findByEmployeeIdOnDate(employeeId, date.get())
+                        : findReservationUc.findByEmployeeId(employeeId))
                 .collectList()
                 .flatMap(reservations -> ServerResponse.ok().bodyValue(reservations));
     }
@@ -74,5 +79,28 @@ public class ReservationHandler {
 
         return changeReservationStatusUc.cancelReservation(reservationId)
                 .flatMap(reservation -> ServerResponse.ok().bodyValue(reservation));
+    }
+
+    public Mono<ServerResponse> completeReservation(ServerRequest request) {
+        UUID reservationId = UUID.fromString(request.pathVariable("id"));
+
+        return changeReservationStatusUc.completeReservation(reservationId)
+                .flatMap(reservation -> ServerResponse.ok().bodyValue(reservation));
+    }
+
+    public Mono<ServerResponse> markNoShow(ServerRequest request) {
+        UUID reservationId = UUID.fromString(request.pathVariable("id"));
+
+        return changeReservationStatusUc.markNoShow(reservationId)
+                .flatMap(reservation -> ServerResponse.ok().bodyValue(reservation));
+    }
+
+    /** Fecha AAAA-MM-DD; un formato inválido responde 400 (TECH_001). */
+    private static java.time.LocalDate parseDate(String value) {
+        try {
+            return java.time.LocalDate.parse(value);
+        } catch (java.time.format.DateTimeParseException ex) {
+            throw new IllegalArgumentException("Fecha inválida: " + value, ex);
+        }
     }
 }

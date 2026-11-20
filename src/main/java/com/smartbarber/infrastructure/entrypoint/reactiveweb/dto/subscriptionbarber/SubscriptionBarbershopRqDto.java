@@ -12,17 +12,17 @@ import java.util.UUID;
 
 @Builder
 public record SubscriptionBarbershopRqDto(
-        @NotNull(message = "El barberId es obligatorio")
+        @NotNull(message = "El id de la barbería es obligatorio")
         UUID barberId,
-        @NotNull(message = "El subscriptionId es obligatorio")
+        @NotNull(message = "El plan es obligatorio")
         Integer subscriptionId,
-        @NotNull(message = "El status es obligatorio")
+        @NotNull(message = "El estado es obligatorio")
         SubscriptionBarberStatus status,
-        @NotNull(message = "El duration es obligatorio")
+        @NotNull(message = "La duración es obligatoria")
         Integer duration,
-        @NotNull(message = "El type es obligatorio")
+        @NotNull(message = "El tipo es obligatorio")
         SubscriptionType type,
-        @NotNull(message = "El automaticRenew es obligatorio")
+        @NotNull(message = "Debe indicar si la renovación es automática")
         Boolean automaticRenew
 
 ){

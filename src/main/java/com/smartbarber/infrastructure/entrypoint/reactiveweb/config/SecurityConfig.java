@@ -237,7 +237,8 @@ public class SecurityConfig {
                                 "/reservation-service/barber/**"
                         ).hasAnyRole(
                                 RoleType.BARBER.name(),
-                                RoleType.ADMIN.name()
+                                RoleType.ADMIN.name(),
+                                RoleType.CUSTOMER.name()
                         )
 
                         .pathMatchers(HttpMethod.GET,

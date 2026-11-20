@@ -10,34 +10,6 @@ spring:
       enabled: true
       initial-size: 5
       max-size: 20
-  mail:
-    host: ${MAIL_HOST:smtp-relay.brevo.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:c44329001@smtp-brevo.com}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          connectiontimeout: 10000
-          timeout: 10000
-          writetimeout: 10000
-  #mail:
-  #  host: smtp.gmail.com
-  #  port: 587
-  #  username: ${MAIL_USERNAME}
-  #  password: ${MAIL_PASSWORD}
-  #  properties:
-  #    mail:
-   #     smtp:
-    #      auth: true
-     #     starttls:
-      #      enable: true
-       #     required: true
-
 logging:
   level:
     org.springframework.data.r2dbc: DEBUG
@@ -69,3 +41,6 @@ management:
   health:
     mail:
       enabled: false
+
+brevo:
+  api-key: ${MAIL_PASSWORD}

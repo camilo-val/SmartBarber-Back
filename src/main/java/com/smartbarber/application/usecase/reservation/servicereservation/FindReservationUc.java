@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import com.smartbarber.domain.enums.ReservationStatus;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -83,30 +84,55 @@ public class FindReservationUc {
                         ? Flux.error(() -> new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND))
                         : reservationRepositoryPort.findByCustomerId(customerId));
     }
+    /**
+     * Reservas de un barbero.
+     * <ul>
+     *   <li>Barbero: solo las suyas. Administrador: las de su equipo.</li>
+     *   <li>Cliente: puede consultarlas para ver la disponibilidad al reservar,
+     *   pero solo recibe las que ocupan horario; la entrada las expone sin
+     *   datos de otros clientes (ver {@link #isCustomerCaller()}).</li>
+     * </ul>
+     */
     public Flux<Reservation> findByEmployeeId(UUID employeeId) {
-        // El barbero solo consulta su agenda; el administrador, la de su equipo.
         return Mono.zip(currentUser(), employeePort.findById(employeeId)
                         .switchIfEmpty(Mono.error(() ->
                                 new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND))))
-                .doOnNext(data -> AuthorizationAccessRules.validateEmployeeScopedAccess(data.getT1(), data.getT2()))
-                .thenMany(reservationRepositoryPort.findByEmployeeId(employeeId))
-                .count()
-                .flatMapMany(count
-                        -> count == 0
-                        ? Flux.error(() -> new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND))
-                        : reservationRepositoryPort.findByEmployeeId(employeeId));
+                .flatMapMany(data -> {
+                    if (AuthorizationAccessRules.isCustomer(data.getT1())) {
+                        return occupying(reservationRepositoryPort.findByEmployeeId(employeeId));
+                    }
+                    AuthorizationAccessRules.validateEmployeeScopedAccess(data.getT1(), data.getT2());
+                    return reservationRepositoryPort.findByEmployeeId(employeeId);
+                })
+                .switchIfEmpty(Flux.error(() -> new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND)));
     }
 
+    /**
+     * Reservas de una barbería: completas para su personal; para un cliente,
+     * solo las que ocupan horario (sin datos de otros clientes en la entrada).
+     */
     public Flux<Reservation> findAllBarberId(UUID barberId) {
-        // Solo el personal de esa barbería.
         return currentUser()
-                .doOnNext(user -> AuthorizationAccessRules.validateEmployeeTenantAccess(user, barberId))
-                .thenMany(reservationRepositoryPort.findAllBarberId(barberId))
-                .count()
-                .flatMapMany(count
-                        -> count == 0
-                        ? Flux.error(() -> new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND))
-                        : reservationRepositoryPort.findAllBarberId(barberId));
+                .flatMapMany(user -> {
+                    if (AuthorizationAccessRules.isCustomer(user)) {
+                        return occupying(reservationRepositoryPort.findAllBarberId(barberId));
+                    }
+                    AuthorizationAccessRules.validateEmployeeTenantAccess(user, barberId);
+                    return reservationRepositoryPort.findAllBarberId(barberId);
+                })
+                .switchIfEmpty(Flux.error(() -> new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND)));
+    }
+
+    /** Indica si quien consulta es un cliente: la entrada debe mostrar solo la ocupación. */
+    public Mono<Boolean> isCustomerCaller() {
+        return currentUser().map(AuthorizationAccessRules::isCustomer);
+    }
+
+    /** Reservas que ocupan la agenda (se excluyen canceladas e inasistencias). */
+    private static Flux<Reservation> occupying(Flux<Reservation> reservations) {
+        return reservations.filter(reservation ->
+                reservation.getStatus() != ReservationStatus.CANCELLED
+                        && reservation.getStatus() != ReservationStatus.NO_SHOW);
     }
 
     private CustomerResponse buildCustomer(Customer customer){

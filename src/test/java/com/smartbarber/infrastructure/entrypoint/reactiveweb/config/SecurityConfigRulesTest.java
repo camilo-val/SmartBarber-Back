@@ -114,6 +114,8 @@ class SecurityConfigRulesTest {
             "CUSTOMER, POST,   /reservation-service/create,                     200",
             "CUSTOMER, GET,    /reservation-service/customer/ID,                200",
             "CUSTOMER, GET,    /public/employee-service/barbershop/ID/bookable, 200",
+            "CUSTOMER, GET,    /reservation-service/employee/ID,                200",
+            "CUSTOMER, GET,    /reservation-service/barber/ID,                  200",
             "CUSTOMER, GET,    /public/employee-service/barbershop/ID,          403",
             "BARBER,   GET,    /public/employee-service/barbershop/ID,          200",
             "BARBER,   PATCH,  /reservation-service/ID/complete,                200",

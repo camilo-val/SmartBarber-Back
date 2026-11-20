@@ -1,5 +1,10 @@
 package com.smartbarber.infrastructure.entrypoint.reactiveweb.handler.reservation;
 
+import com.smartbarber.domain.model.reservation.Reservation;
+import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.reservation.OccupiedSlotRsDto;
+import reactor.core.publisher.Flux;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import com.smartbarber.application.command.in.reservation.ReservationCommand;
 import com.smartbarber.application.usecase.reservation.servicereservation.ChangeReservationStatusUc;
 import com.smartbarber.application.usecase.reservation.servicereservation.CreateReservationUc;
@@ -46,11 +51,9 @@ public class ReservationHandler {
         UUID employeeId = UUID.fromString(request.pathVariable("employeeId"));
         var date = request.queryParam("date").map(ReservationHandler::parseDate);
 
-        return (date.isPresent()
-                        ? findReservationUc.findByEmployeeIdOnDate(employeeId, date.get())
-                        : findReservationUc.findByEmployeeId(employeeId))
-                .collectList()
-                .flatMap(reservations -> ServerResponse.ok().bodyValue(reservations));
+        return respond(date.isPresent()
+                ? findReservationUc.findByEmployeeIdOnDate(employeeId, date.get())
+                : findReservationUc.findByEmployeeId(employeeId));
     }
 
     public Mono<ServerResponse> getReservationByCustomerId(ServerRequest request) {
@@ -62,9 +65,20 @@ public class ReservationHandler {
 
     public Mono<ServerResponse> getReservationByBarberId(ServerRequest request) {
         String id = request.pathVariable("barberId");
-        return findReservationUc.findAllBarberId(UUID.fromString(id))
-                .collectList()
-                .flatMap(reservations -> ServerResponse.ok().bodyValue(reservations));
+        return respond(findReservationUc.findAllBarberId(UUID.fromString(id)));
+    }
+
+    /**
+     * El personal recibe las reservas completas; un cliente, solo el horario que
+     * ocupa cada una (sin datos de otros clientes).
+     */
+    private Mono<ServerResponse> respond(Flux<Reservation> reservations) {
+        return Mono.zip(findReservationUc.isCustomerCaller(), reservations.collectList())
+                .flatMap(data -> Boolean.TRUE.equals(data.getT1())
+                        ? ServerResponse.ok().bodyValue(data.getT2().stream()
+                                .map(OccupiedSlotRsDto::from)
+                                .toList())
+                        : ServerResponse.ok().bodyValue(data.getT2()));
     }
 
     public Mono<ServerResponse> confirmReservation(ServerRequest request) {
@@ -96,10 +110,10 @@ public class ReservationHandler {
     }
 
     /** Fecha AAAA-MM-DD; un formato inválido responde 400 (TECH_001). */
-    private static java.time.LocalDate parseDate(String value) {
+    private static LocalDate parseDate(String value) {
         try {
-            return java.time.LocalDate.parse(value);
-        } catch (java.time.format.DateTimeParseException ex) {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException ex) {
             throw new IllegalArgumentException("Fecha inválida: " + value, ex);
         }
     }

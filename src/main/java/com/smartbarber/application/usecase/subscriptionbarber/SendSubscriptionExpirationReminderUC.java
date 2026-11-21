@@ -125,22 +125,14 @@ public class SendSubscriptionExpirationReminderUC {
                 .ofPattern("dd 'de' MMMM 'de' yyyy", new Locale("es", "CO"))
                 .format(subscription.getExpirationDate().atZone(ZONE_ID));
 
+        // El proveedor recibe "htmlContent": los saltos de línea de texto plano se pierden.
         return """
-                Hola,
-
-                Te informamos que la suscripción de tu barbería en SmartBarber
-                está próxima a vencer.
-
-                Fecha de vencimiento: %s
-
-                Faltan 10 días para la fecha de expiración de tu suscripción.
-
-                Recuerda que, al llegar la fecha de vencimiento, el acceso
-                a las funcionalidades de SmartBarber podría verse afectado.
-
-                Gracias por utilizar SmartBarber.
-
-                Equipo SmartBarber.
+                <p>Hola,</p>
+                <p>Te informamos que la suscripción de tu barbería en SmartBarber está próxima a vencer.</p>
+                <p>Fecha de vencimiento: <b>%s</b> (faltan 10 días).</p>
+                <p>Si tienes activa la renovación automática, el cobro se generará unos días antes de esa fecha.
+                De lo contrario, al vencer se restringirá el acceso a los módulos de SmartBarber.</p>
+                <p>Gracias por utilizar SmartBarber.<br>Equipo SmartBarber</p>
                 """.formatted(formattedDate);
     }
 }

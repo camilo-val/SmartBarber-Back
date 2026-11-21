@@ -1,6 +1,7 @@
 package com.smartbarber.infrastructure.drivenadapter.websocket.adapter;
 
 import com.smartbarber.application.usecase.subscriptionbarber.FindSubscriptionBarberUC;
+import com.smartbarber.application.usecase.subscriptionbarber.SendSubscriptionPaymentNotificationUC;
 import com.smartbarber.application.usecase.subscriptionbarber.UpdateSubscriptionBarberStatusUC;
 import com.smartbarber.application.usecase.transaction.FindTransactionUc;
 import com.smartbarber.application.usecase.transaction.UpdateTransactionUC;
@@ -21,15 +22,20 @@ public class GatewayResponseHandler {
     private final FindSubscriptionBarberUC findSubscriptionBarberUC;
     private final FindTransactionUc findTransactionUc;
     private final UpdateTransactionUC updateTransactionUC;
+    private final SendSubscriptionPaymentNotificationUC paymentNotificationUC;
 
     public Mono<Void> handle(TransactionStatus status, UUID orderId){
         return findTransactionUc.findTransactionByOrderId(orderId)
                 .flatMap(transaction -> updateTransactionUC.changeStatus(status,orderId))
                 .flatMap(transaction -> findSubscriptionBarberUC.findSubscriptionById(transaction.getSubscriptionBarberId())
-                                .flatMap( subscriptionExist ->{
-                                    return updateSubscriptionBarberStatusUC.changeStatus(subscriptionExist, SubscriptionBarberStatus.mapStatus(transaction.getStatus()));
-                                }
-                        )
+                                .flatMap(subscriptionExist -> {
+                                    SubscriptionBarberStatus previousStatus = subscriptionExist.getStatus();
+                                    return updateSubscriptionBarberStatusUC
+                                            .changeStatus(subscriptionExist, SubscriptionBarberStatus.mapStatus(transaction.getStatus()))
+                                            // Aviso al administrador: adquisición, renovación o pago rechazado.
+                                            .flatMap(updated -> paymentNotificationUC.notify(previousStatus, updated)
+                                                    .thenReturn(updated));
+                                })
                 .then()
                 );
     }

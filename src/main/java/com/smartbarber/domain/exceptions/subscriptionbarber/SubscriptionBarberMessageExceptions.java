@@ -10,7 +10,9 @@ public enum SubscriptionBarberMessageExceptions implements ErrorMessage {
     THE_BARBER_HAS_ALREADY_ACTIVE_OR_PENDING_SUBSCRIPTIONS("SB_005","the barber has already active or pending subscriptions"),
     THE_BARBER_HAS_ALREADY_APPROVED_OR_PENDING_SUBSCRIPTIONS("SB_005","the barber has already active or pending subscriptions"),
     INVALID_TYPE_SUBSCRIPTION("SB_006","invalid type subscription"),
-    THE_BARBER_ALREADY_HAS_AN_ACTIVE_SUBSCRIPTION("SB_007","the barber already has an active subscription");
+    THE_BARBER_ALREADY_HAS_AN_ACTIVE_SUBSCRIPTION("SB_007","the barber already has an active subscription"),
+    PAYMENT_HISTORY_FORBIDDEN("SB_008","only the barbershop administrator can view its payment history"),
+    INVALID_PAYMENT_HISTORY_FILTER("SB_009","invalid payment history filter");
     private final String code;
     private final String message;
     SubscriptionBarberMessageExceptions(String code, String message) {

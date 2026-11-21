@@ -422,6 +422,11 @@ public class SecurityConfig {
                                 "/subscription-barbershop-service/renew"
                         ).hasRole(RoleType.ADMIN.name())
 
+                        // Historial de pagos: solo el administrador (la barbería sale de su sesión).
+                        .pathMatchers(HttpMethod.GET,
+                                "/subscription-barbershop-service/payment-history"
+                        ).hasRole(RoleType.ADMIN.name())
+
                         .pathMatchers(HttpMethod.GET,
                                 "/subscription-barbershop-service/actual-subscription/**",
                                 "/subscription-barbershop-service/subscription-history/**"

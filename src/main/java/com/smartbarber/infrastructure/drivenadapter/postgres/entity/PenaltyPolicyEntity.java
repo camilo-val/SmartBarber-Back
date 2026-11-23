@@ -29,10 +29,6 @@ public class PenaltyPolicyEntity {
     private Integer restrictionDays;
     @Column("anticipacion_cancelar_horas")
     private Integer cancelNoticeHours;
-    @Column("permite_reprogramar")
-    private Boolean allowReschedule;
-    @Column("anticipacion_reprogramar_horas")
-    private Integer rescheduleNoticeHours;
     @Column("fecha_modificacion")
     private Instant updatedAt;
     @Column("modificado_por")

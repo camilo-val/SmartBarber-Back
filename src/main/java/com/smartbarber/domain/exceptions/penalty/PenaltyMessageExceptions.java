@@ -9,7 +9,6 @@ public enum PenaltyMessageExceptions implements ErrorMessage {
     CUSTOMER_RESTRICTED("PEN_003", "El cliente tiene una restricción activa para reservar en esta barbería"),
     RESTRICTION_NOT_FOUND("PEN_004", "La restricción no existe o ya no está activa"),
     INVALID_REASON("PEN_005", "El motivo es obligatorio y debe tener entre 5 y 200 caracteres"),
-    RESCHEDULE_NOT_ALLOWED("PEN_006", "La barbería no permite reprogramar reservas"),
     CUSTOMER_ONLY("PEN_007", "Solo un cliente puede consultar su estado de penalización");
 
     private final String code;

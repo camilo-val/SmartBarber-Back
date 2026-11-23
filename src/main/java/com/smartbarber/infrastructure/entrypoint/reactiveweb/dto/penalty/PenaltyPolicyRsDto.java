@@ -13,14 +13,11 @@ public record PenaltyPolicyRsDto(
         int countingPeriodDays,
         int restrictionDays,
         int cancelNoticeHours,
-        boolean allowReschedule,
-        int rescheduleNoticeHours,
         Instant updatedAt
 ) {
     public static PenaltyPolicyRsDto from(PenaltyPolicy policy) {
         return new PenaltyPolicyRsDto(policy.getBarbershopId(), policy.isEnabled(), policy.getToleranceMinutes(),
                 policy.getNoShowThreshold(), policy.getCountingPeriodDays(), policy.getRestrictionDays(),
-                policy.getCancelNoticeHours(), policy.isAllowReschedule(), policy.getRescheduleNoticeHours(),
-                policy.getUpdatedAt());
+                policy.getCancelNoticeHours(), policy.getUpdatedAt());
     }
 }

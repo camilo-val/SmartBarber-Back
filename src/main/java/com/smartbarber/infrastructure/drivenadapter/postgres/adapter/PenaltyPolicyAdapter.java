@@ -46,8 +46,6 @@ public class PenaltyPolicyAdapter implements PenaltyPolicyPort {
         entity.setCountingPeriodDays(settings.countingPeriodDays());
         entity.setRestrictionDays(settings.restrictionDays());
         entity.setCancelNoticeHours(settings.cancelNoticeHours());
-        entity.setAllowReschedule(settings.allowReschedule());
-        entity.setRescheduleNoticeHours(settings.rescheduleNoticeHours());
         entity.setUpdatedAt(policy.getUpdatedAt());
         entity.setUpdatedBy(policy.getUpdatedBy());
         return entity;
@@ -61,9 +59,7 @@ public class PenaltyPolicyAdapter implements PenaltyPolicyPort {
                 orDefault(entity.getNoShowThreshold(), defaults.noShowThreshold()),
                 orDefault(entity.getCountingPeriodDays(), defaults.countingPeriodDays()),
                 orDefault(entity.getRestrictionDays(), defaults.restrictionDays()),
-                orDefault(entity.getCancelNoticeHours(), defaults.cancelNoticeHours()),
-                entity.getAllowReschedule() == null ? defaults.allowReschedule() : entity.getAllowReschedule(),
-                orDefault(entity.getRescheduleNoticeHours(), defaults.rescheduleNoticeHours()));
+                orDefault(entity.getCancelNoticeHours(), defaults.cancelNoticeHours()));
         return PenaltyPolicy.rebuild(entity.getId(), entity.getBarbershopId(), settings,
                 entity.getUpdatedAt(), entity.getUpdatedBy());
     }

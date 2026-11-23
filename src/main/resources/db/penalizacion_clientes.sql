@@ -10,7 +10,7 @@ BEGIN;
 
 -- Parámetros por barbería. Sin fila, el back usa los valores por defecto
 -- (3 inasistencias en 30 días -> 15 días sin reservar, tolerancia 15 min,
--- cancelar y reprogramar hasta 24 h antes).
+-- cancelar hasta 24 h antes).
 CREATE TABLE IF NOT EXISTS politica_penalizacion (
     id_politica_penalizacion       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     id_barberia                    UUID        NOT NULL REFERENCES barberia (id_barberia) ON DELETE CASCADE,
@@ -20,8 +20,6 @@ CREATE TABLE IF NOT EXISTS politica_penalizacion (
     periodo_dias                   INTEGER     NOT NULL DEFAULT 30 CHECK (periodo_dias BETWEEN 15 AND 90),
     duracion_restriccion_dias      INTEGER     NOT NULL DEFAULT 15 CHECK (duracion_restriccion_dias BETWEEN 1 AND 30),
     anticipacion_cancelar_horas    INTEGER     NOT NULL DEFAULT 24 CHECK (anticipacion_cancelar_horas BETWEEN 1 AND 72),
-    permite_reprogramar            BOOLEAN     NOT NULL DEFAULT TRUE,
-    anticipacion_reprogramar_horas INTEGER     NOT NULL DEFAULT 24 CHECK (anticipacion_reprogramar_horas BETWEEN 1 AND 72),
     fecha_modificacion             TIMESTAMPTZ,
     modificado_por                 UUID        REFERENCES usuario (user_id) ON DELETE SET NULL,
 

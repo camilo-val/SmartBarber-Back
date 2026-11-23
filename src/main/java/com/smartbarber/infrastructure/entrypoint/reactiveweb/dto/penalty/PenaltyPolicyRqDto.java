@@ -12,12 +12,10 @@ public record PenaltyPolicyRqDto(
         @NotNull @Min(PenaltyPolicy.MIN_THRESHOLD) @Max(PenaltyPolicy.MAX_THRESHOLD) Integer noShowThreshold,
         @NotNull @Min(PenaltyPolicy.MIN_PERIOD) @Max(PenaltyPolicy.MAX_PERIOD) Integer countingPeriodDays,
         @NotNull @Min(PenaltyPolicy.MIN_RESTRICTION) @Max(PenaltyPolicy.MAX_RESTRICTION) Integer restrictionDays,
-        @NotNull @Min(PenaltyPolicy.MIN_NOTICE) @Max(PenaltyPolicy.MAX_NOTICE) Integer cancelNoticeHours,
-        @NotNull Boolean allowReschedule,
-        @NotNull @Min(PenaltyPolicy.MIN_NOTICE) @Max(PenaltyPolicy.MAX_NOTICE) Integer rescheduleNoticeHours
+        @NotNull @Min(PenaltyPolicy.MIN_NOTICE) @Max(PenaltyPolicy.MAX_NOTICE) Integer cancelNoticeHours
 ) {
     public PenaltyPolicy.Settings toSettings() {
         return new PenaltyPolicy.Settings(enabled, toleranceMinutes, noShowThreshold, countingPeriodDays,
-                restrictionDays, cancelNoticeHours, allowReschedule, rescheduleNoticeHours);
+                restrictionDays, cancelNoticeHours);
     }
 }

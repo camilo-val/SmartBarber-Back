@@ -3,27 +3,29 @@ package com.smartbarber.application.usecase.reservation.servicereservation;
 import com.smartbarber.application.usecase.employee.FindBookableBarbersUC;
 import com.smartbarber.application.usecase.nonworkingday.BarbershopCalendar;
 import com.smartbarber.application.usecase.nonworkingday.FindNonWorkingDaysUC;
-import com.smartbarber.application.usecase.penalty.PenaltyPolicyUC;
 import com.smartbarber.application.usecase.security.AuthorizationAccessRules;
-import com.smartbarber.domain.exceptions.penalty.PenaltyMessageExceptions;
-import com.smartbarber.domain.model.penalty.PenaltyPolicy;
 import com.smartbarber.domain.exceptions.BusinessExceptions;
 import com.smartbarber.domain.exceptions.reservation.ReservationMessageExceptions;
 import com.smartbarber.domain.model.reservation.Reservation;
 import com.smartbarber.domain.port.authentication.CurrentAuthenticationPort;
 import com.smartbarber.domain.port.reservation.ReservationRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
  * El cliente (o el administrador de la barbería) cambia la hora de una reserva
  * agendada. Se mantienen el barbero, los servicios y la duración.
+ *
+ * <p>Reprogramar no hace parte de la política de penalización: no genera
+ * inasistencias y usa su propia anticipación mínima (por defecto 60 minutos).</p>
  *
  * <p>Reglas: anticipación mínima (RES_018/RES_020), barbero reservable
  * (RES_014), día laborable de la barbería, sin cruce con otras reservas del
@@ -41,7 +43,10 @@ public class RescheduleReservationUc {
     private final BarbershopCalendar barbershopCalendar;
     private final ChangeReservationStatusUc changeReservationStatusUc;
     private final TransactionalOperator transactionalOperator;
-    private final PenaltyPolicyUC penaltyPolicyUC;
+
+    /** Anticipación mínima para reprogramar, independiente de la política de penalización. */
+    @Value("${reservation.reschedule-notice-minutes:60}")
+    private long rescheduleNoticeMinutes;
 
     public Mono<Reservation> reschedule(UUID reservationId, OffsetDateTime newStart) {
         OffsetDateTime now = OffsetDateTime.now();
@@ -49,19 +54,12 @@ public class RescheduleReservationUc {
         return reservationRepositoryPort.findById(reservationId)
                 .switchIfEmpty(Mono.error(() ->
                         new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND)))
-                .flatMap(reservation -> Mono.zip(
-                                currentAuthenticationPort.getCurrentAuthentication()
-                                        .switchIfEmpty(Mono.error(() ->
-                                                new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND))),
-                                penaltyPolicyUC.forBarbershop(reservation.getBarbershopId()))
-                        .map(context -> {
-                            AuthorizationAccessRules.validateReservationAccess(context.getT1(), reservation);
-                            PenaltyPolicy policy = context.getT2();
-                            // La barbería decide si sus clientes pueden reprogramar (RN-47).
-                            if (AuthorizationAccessRules.isCustomer(context.getT1()) && !policy.isAllowReschedule()) {
-                                throw new BusinessExceptions(PenaltyMessageExceptions.RESCHEDULE_NOT_ALLOWED);
-                            }
-                            return reservation.reprogramar(newStart, now, policy.rescheduleNotice());
+                .flatMap(reservation -> currentAuthenticationPort.getCurrentAuthentication()
+                        .switchIfEmpty(Mono.error(() ->
+                                new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND)))
+                        .map(user -> {
+                            AuthorizationAccessRules.validateReservationAccess(user, reservation);
+                            return reservation.reprogramar(newStart, now, Duration.ofMinutes(rescheduleNoticeMinutes));
                         }))
                 .flatMap(rescheduled -> validate(rescheduled).thenReturn(rescheduled))
                 .flatMap(reservationRepositoryPort::save)

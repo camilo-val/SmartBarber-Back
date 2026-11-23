@@ -33,8 +33,6 @@ public final class PenaltyPolicy {
     private final int countingPeriodDays;
     private final int restrictionDays;
     private final int cancelNoticeHours;
-    private final boolean allowReschedule;
-    private final int rescheduleNoticeHours;
     private final Instant updatedAt;
     private final UUID updatedBy;
 
@@ -47,8 +45,6 @@ public final class PenaltyPolicy {
         this.countingPeriodDays = settings.countingPeriodDays();
         this.restrictionDays = settings.restrictionDays();
         this.cancelNoticeHours = settings.cancelNoticeHours();
-        this.allowReschedule = settings.allowReschedule();
-        this.rescheduleNoticeHours = settings.rescheduleNoticeHours();
         this.updatedAt = updatedAt;
         this.updatedBy = updatedBy;
     }
@@ -60,13 +56,11 @@ public final class PenaltyPolicy {
             int noShowThreshold,
             int countingPeriodDays,
             int restrictionDays,
-            int cancelNoticeHours,
-            boolean allowReschedule,
-            int rescheduleNoticeHours
+            int cancelNoticeHours
     ) {
         public static Settings defaults() {
             return new Settings(true, DEFAULT_TOLERANCE, DEFAULT_THRESHOLD, DEFAULT_PERIOD,
-                    DEFAULT_RESTRICTION, DEFAULT_NOTICE, true, DEFAULT_NOTICE);
+                    DEFAULT_RESTRICTION, DEFAULT_NOTICE);
         }
 
         void validate() {
@@ -74,8 +68,7 @@ public final class PenaltyPolicy {
                     && between(noShowThreshold, MIN_THRESHOLD, MAX_THRESHOLD)
                     && between(countingPeriodDays, MIN_PERIOD, MAX_PERIOD)
                     && between(restrictionDays, MIN_RESTRICTION, MAX_RESTRICTION)
-                    && between(cancelNoticeHours, MIN_NOTICE, MAX_NOTICE)
-                    && between(rescheduleNoticeHours, MIN_NOTICE, MAX_NOTICE);
+                    && between(cancelNoticeHours, MIN_NOTICE, MAX_NOTICE);
             if (!valid) {
                 throw new BusinessExceptions(PenaltyMessageExceptions.INVALID_POLICY);
             }
@@ -109,7 +102,7 @@ public final class PenaltyPolicy {
 
     public Settings settings() {
         return new Settings(enabled, toleranceMinutes, noShowThreshold, countingPeriodDays,
-                restrictionDays, cancelNoticeHours, allowReschedule, rescheduleNoticeHours);
+                restrictionDays, cancelNoticeHours);
     }
 
     /** Tolerancia de llegada antes de poder marcar la inasistencia (RF-82). */
@@ -120,11 +113,6 @@ public final class PenaltyPolicy {
     /** Anticipación mínima para que el cliente cancele (RN-16). */
     public Duration cancelNotice() {
         return Duration.ofHours(cancelNoticeHours);
-    }
-
-    /** Anticipación mínima para que el cliente reprograme (RN-47). */
-    public Duration rescheduleNotice() {
-        return Duration.ofHours(rescheduleNoticeHours);
     }
 
     public Duration countingPeriod() {
@@ -143,8 +131,6 @@ public final class PenaltyPolicy {
     public int getCountingPeriodDays() { return countingPeriodDays; }
     public int getRestrictionDays() { return restrictionDays; }
     public int getCancelNoticeHours() { return cancelNoticeHours; }
-    public boolean isAllowReschedule() { return allowReschedule; }
-    public int getRescheduleNoticeHours() { return rescheduleNoticeHours; }
     public Instant getUpdatedAt() { return updatedAt; }
     public UUID getUpdatedBy() { return updatedBy; }
 }

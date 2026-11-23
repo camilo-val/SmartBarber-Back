@@ -99,7 +99,7 @@ class PenaltyStandingTest {
 
     @Test
     void conLaPenalizacionDesactivadaNoSeCuentaNiRestringe() {
-        PenaltyPolicy disabled = POLICY.update(new PenaltyPolicy.Settings(false, 15, 3, 30, 15, 24, true, 24),
+        PenaltyPolicy disabled = POLICY.update(new PenaltyPolicy.Settings(false, 15, 3, 30, 15, 24),
                 UUID.randomUUID(), NOW);
         PenaltyStanding standing = PenaltyStanding.evaluate(CUSTOMER, SHOP, disabled,
                 List.of(noShowDaysAgo(3), noShowDaysAgo(2), noShowDaysAgo(1)), List.of(), NOW);
@@ -110,7 +110,7 @@ class PenaltyStandingTest {
     @Test
     void laPoliticaRechazaValoresFueraDeLosLimites() {
         BusinessExceptions error = assertThrows(BusinessExceptions.class, () -> POLICY.update(
-                new PenaltyPolicy.Settings(true, 15, 1, 30, 15, 24, true, 24), UUID.randomUUID(), NOW));
+                new PenaltyPolicy.Settings(true, 15, 1, 30, 15, 24), UUID.randomUUID(), NOW));
         assertEquals(PenaltyMessageExceptions.INVALID_POLICY, error.getExceptionMessage());
     }
 

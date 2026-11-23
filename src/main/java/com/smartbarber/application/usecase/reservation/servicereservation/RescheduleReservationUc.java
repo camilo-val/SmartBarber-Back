@@ -3,7 +3,10 @@ package com.smartbarber.application.usecase.reservation.servicereservation;
 import com.smartbarber.application.usecase.employee.FindBookableBarbersUC;
 import com.smartbarber.application.usecase.nonworkingday.BarbershopCalendar;
 import com.smartbarber.application.usecase.nonworkingday.FindNonWorkingDaysUC;
+import com.smartbarber.application.usecase.penalty.PenaltyPolicyUC;
 import com.smartbarber.application.usecase.security.AuthorizationAccessRules;
+import com.smartbarber.domain.exceptions.penalty.PenaltyMessageExceptions;
+import com.smartbarber.domain.model.penalty.PenaltyPolicy;
 import com.smartbarber.domain.exceptions.BusinessExceptions;
 import com.smartbarber.domain.exceptions.reservation.ReservationMessageExceptions;
 import com.smartbarber.domain.model.reservation.Reservation;
@@ -38,6 +41,7 @@ public class RescheduleReservationUc {
     private final BarbershopCalendar barbershopCalendar;
     private final ChangeReservationStatusUc changeReservationStatusUc;
     private final TransactionalOperator transactionalOperator;
+    private final PenaltyPolicyUC penaltyPolicyUC;
 
     public Mono<Reservation> reschedule(UUID reservationId, OffsetDateTime newStart) {
         OffsetDateTime now = OffsetDateTime.now();
@@ -45,13 +49,19 @@ public class RescheduleReservationUc {
         return reservationRepositoryPort.findById(reservationId)
                 .switchIfEmpty(Mono.error(() ->
                         new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND)))
-                .flatMap(reservation -> currentAuthenticationPort.getCurrentAuthentication()
-                        .switchIfEmpty(Mono.error(() ->
-                                new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND)))
-                        .map(user -> {
-                            AuthorizationAccessRules.validateReservationAccess(user, reservation);
-                            return reservation.reprogramar(newStart, now,
-                                    changeReservationStatusUc.customerChangeNotice());
+                .flatMap(reservation -> Mono.zip(
+                                currentAuthenticationPort.getCurrentAuthentication()
+                                        .switchIfEmpty(Mono.error(() ->
+                                                new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_FOUND))),
+                                penaltyPolicyUC.forBarbershop(reservation.getBarbershopId()))
+                        .map(context -> {
+                            AuthorizationAccessRules.validateReservationAccess(context.getT1(), reservation);
+                            PenaltyPolicy policy = context.getT2();
+                            // La barbería decide si sus clientes pueden reprogramar (RN-47).
+                            if (AuthorizationAccessRules.isCustomer(context.getT1()) && !policy.isAllowReschedule()) {
+                                throw new BusinessExceptions(PenaltyMessageExceptions.RESCHEDULE_NOT_ALLOWED);
+                            }
+                            return reservation.reprogramar(newStart, now, policy.rescheduleNotice());
                         }))
                 .flatMap(rescheduled -> validate(rescheduled).thenReturn(rescheduled))
                 .flatMap(reservationRepositoryPort::save)

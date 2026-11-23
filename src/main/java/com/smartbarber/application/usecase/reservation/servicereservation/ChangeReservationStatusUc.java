@@ -12,9 +12,12 @@ import com.smartbarber.domain.enums.ReservationType;
 import com.smartbarber.application.usecase.security.AuthorizationAccessRules;
 import com.smartbarber.domain.port.authentication.CurrentAuthenticationPort;
 import com.smartbarber.domain.model.authentication.Authentication;
-import org.springframework.beans.factory.annotation.Value;
+import com.smartbarber.application.usecase.penalty.CustomerPenaltyUC;
+import com.smartbarber.application.usecase.penalty.PenaltyPolicyUC;
+import com.smartbarber.domain.exceptions.penalty.PenaltyMessageExceptions;
+import com.smartbarber.domain.model.penalty.PenaltyPolicy;
+import reactor.util.function.Tuples;
 import java.time.Duration;
-import java.util.function.BiFunction;
 import com.smartbarber.domain.port.CustomerPort;
 import com.smartbarber.domain.port.NotificationPort;
 import com.smartbarber.domain.port.reservation.ReservationRepositoryPort;
@@ -42,19 +45,28 @@ public class ChangeReservationStatusUc {
         private final EmailService emailService;
             private final CurrentAuthenticationPort currentAuthenticationPort;
     private final QueueBroadcastService queueBroadcastService;
+    private final PenaltyPolicyUC penaltyPolicyUC;
+    private final CustomerPenaltyUC customerPenaltyUC;
 
-    /** Anticipación mínima con que el cliente puede cancelar o reprogramar. */
-    @Value("${reservation.customer-change-notice-minutes:60}")
-    private long customerChangeNoticeMinutes;
+    /** Plazo para que el administrador corrija una inasistencia marcada por error (PEN-14). */
+    static final Duration NO_SHOW_CORRECTION_WINDOW = Duration.ofHours(48);
 
-    Duration customerChangeNotice() {
-        return Duration.ofMinutes(customerChangeNoticeMinutes);
+    /** Cambio de estado con acceso a la política de la barbería de la reserva. */
+    @FunctionalInterface
+    interface Transition {
+        Reservation apply(Authentication user, Reservation reservation, PenaltyPolicy policy);
+    }
+
+    /** Acción posterior al guardado (avisos, penalización). Sus errores no deshacen el cambio. */
+    @FunctionalInterface
+    interface AfterSave {
+        Mono<Void> run(Authentication user, Reservation saved);
     }
 
     public Mono<Reservation> confirmReservation(UUID reservationId) {
         return changeStatus(
                 reservationId,
-                (user, reservation) -> reservation.confirmar(),
+                (user, reservation, policy) -> reservation.confirmar(),
                 "¡Tu reserva ha sido confirmada!",
                 "RESERVATION_CONFIRMED",
                 "¡Tenemos excelentes noticias!\n\n"
@@ -71,10 +83,11 @@ public class ChangeReservationStatusUc {
     public Mono<Reservation> cancelReservation(UUID reservationId) {
         return changeStatus(
                 reservationId,
-                (user, reservation) -> {
-                    // El cliente debe cancelar con la anticipación mínima (RES_018).
+                (user, reservation, policy) -> {
+                    // El cliente cancela con la anticipación de la política de la
+                    // barbería (RN-16, RES_018); a tiempo no genera inasistencia.
                     if (AuthorizationAccessRules.isCustomer(user)) {
-                        reservation.ensureChangeAllowed(OffsetDateTime.now(), customerChangeNotice());
+                        reservation.ensureChangeAllowed(OffsetDateTime.now(), policy.cancelNotice());
                     }
                     return reservation.cancelar();
                 },
@@ -94,7 +107,7 @@ public class ChangeReservationStatusUc {
     public Mono<Reservation> completeReservation(UUID reservationId) {
         return changeStatus(
                 reservationId,
-                (user, reservation) -> reservation.finalizar(OffsetDateTime.now()),
+                (user, reservation, policy) -> reservation.finalizar(OffsetDateTime.now()),
                 "¡Gracias por tu visita!",
                 "RESERVATION_COMPLETED",
                 "Tu servicio en SmartBarber fue finalizado.\n\n"
@@ -103,23 +116,64 @@ public class ChangeReservationStatusUc {
         );
     }
 
-    /** El barbero o el administrador registran que el cliente no se presentó. */
+    /**
+     * El barbero asignado o el administrador registran que el cliente no se
+     * presentó (RF-82, PEN-01, PEN-02): solo reservas confirmadas y pasada la
+     * tolerancia. Luego se evalúa la penalización y se avisa al cliente.
+     */
     public Mono<Reservation> markNoShow(UUID reservationId) {
         return changeStatus(
                 reservationId,
-                (user, reservation) -> reservation.registrarInasistencia(OffsetDateTime.now()),
-                null,
-                null,
-                null
+                (user, reservation, policy) -> reservation.registrarInasistencia(OffsetDateTime.now(), policy.tolerance()),
+                (user, saved) -> customerPenaltyUC.registerNoShow(saved)
+                        .flatMap(outcome -> createNotificationAndSendEmail(
+                                saved,
+                                PenaltyMessages.noShowTitle(outcome),
+                                "PENALTY_NO_SHOW",
+                                PenaltyMessages.noShowBody(outcome)))
         );
+    }
+
+    /**
+     * El administrador corrige un "No asistió" marcado por error (PEN-14):
+     * dentro de las 48 horas y con motivo. La reserva queda cancelada, la
+     * inasistencia deja de contar y, si había causado la restricción, se levanta.
+     */
+    public Mono<Reservation> revertNoShow(UUID reservationId, String reason) {
+        return changeStatus(
+                reservationId,
+                (user, reservation, policy) -> {
+                    if (!AuthorizationAccessRules.isAdmin(user)) {
+                        throw new BusinessExceptions(PenaltyMessageExceptions.FORBIDDEN);
+                    }
+                    return reservation.corregirInasistencia(reason, OffsetDateTime.now(), NO_SHOW_CORRECTION_WINDOW);
+                },
+                (user, saved) -> customerPenaltyUC.onNoShowReverted(saved, user.getUser().getId())
+                        .then(createNotificationAndSendEmail(
+                                saved,
+                                "Corregimos el registro de tu cita",
+                                "NO_SHOW_REVERTED",
+                                "La barbería corrigió el registro de inasistencia de esta cita, así que "
+                                        + "ya no cuenta en tu historial de inasistencias.")))
+        ;
     }
 
     private Mono<Reservation> changeStatus(
             UUID reservationId,
-            BiFunction<Authentication, Reservation, Reservation> statusTransition,
+            Transition statusTransition,
             String notificationTitle,
             String eventType,
             String message
+    ) {
+        return changeStatus(reservationId, statusTransition, (user, saved) -> message == null
+                ? Mono.empty()
+                : createNotificationAndSendEmail(saved, notificationTitle, eventType, message));
+    }
+
+    private Mono<Reservation> changeStatus(
+            UUID reservationId,
+            Transition statusTransition,
+            AfterSave afterSave
     ) {
         return reservationRepositoryPort.findById(reservationId)
                 .switchIfEmpty(Mono.error(
@@ -129,30 +183,35 @@ public class ChangeReservationStatusUc {
                 ))
                 // Solo el cliente de la reserva, su barbero o el administrador de la
                 // barbería pueden cambiarla (las rutas ya limitan qué rol hace qué).
-                .flatMap(reservation -> currentAuthenticationPort.getCurrentAuthentication()
-                        .switchIfEmpty(Mono.error(() -> new BusinessExceptions(
-                                ReservationMessageExceptions.RESERVATION_NOT_FOUND)))
-                        .map(user -> {
+                .flatMap(reservation -> Mono.zip(
+                                currentAuthenticationPort.getCurrentAuthentication()
+                                        .switchIfEmpty(Mono.error(() -> new BusinessExceptions(
+                                                ReservationMessageExceptions.RESERVATION_NOT_FOUND))),
+                                penaltyPolicyUC.forBarbershop(reservation.getBarbershopId()))
+                        .flatMap(context -> {
+                            Authentication user = context.getT1();
                             AuthorizationAccessRules.validateReservationAccess(user, reservation);
-                            return statusTransition.apply(user, reservation);
+                            Reservation changed = statusTransition.apply(user, reservation, context.getT2());
+                            return reservationRepositoryPort.save(changed)
+                                    .map(saved -> Tuples.of(user, saved));
                         }))
-                .flatMap(reservationRepositoryPort::save)
                 // Si era un turno de la cola virtual, la cola se actualiza para todos.
-                .flatMap(reservation -> reservation.getReservationType() == ReservationType.VIRTUAL_QUEUE
-                        && reservation.getStatus() == ReservationStatus.CANCELLED
-                        ? queueBroadcastService.publish(reservation.getEmployeeId(), NotificationType.QUEUE_CUSTOMER_LEFT)
-                                .onErrorResume(error -> Mono.empty())
-                                .thenReturn(reservation)
-                        : Mono.just(reservation))
-                .flatMap(reservation -> message == null
-                        ? Mono.just(reservation)
-                        : createNotificationAndSendEmail(
-                                reservation,
-                                notificationTitle,
-                                eventType,
-                                message
-                        ).thenReturn(reservation)
-                );
+                .flatMap(result -> {
+                    Reservation reservation = result.getT2();
+                    return reservation.getReservationType() == ReservationType.VIRTUAL_QUEUE
+                            && reservation.getStatus() == ReservationStatus.CANCELLED
+                            ? queueBroadcastService.publish(reservation.getEmployeeId(), NotificationType.QUEUE_CUSTOMER_LEFT)
+                                    .onErrorResume(error -> Mono.empty())
+                                    .thenReturn(result)
+                            : Mono.just(result);
+                })
+                .flatMap(result -> afterSave.run(result.getT1(), result.getT2())
+                        .onErrorResume(error -> {
+                            log.error("Acción posterior al cambio de la reserva {} falló",
+                                    result.getT2().getId(), error);
+                            return Mono.empty();
+                        })
+                        .thenReturn(result.getT2()));
     }
 
     /** Registra la notificación y envía el correo al cliente de la reserva. */

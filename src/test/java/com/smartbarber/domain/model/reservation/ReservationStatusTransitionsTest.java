@@ -44,17 +44,55 @@ class ReservationStatusTransitionsTest {
         assertEquals(ReservationMessageExceptions.RESERVATION_NOT_STARTED, error.getExceptionMessage());
     }
 
+    private static final Duration TOLERANCE = Duration.ofMinutes(15);
+
     @Test
-    void registraInasistenciaDeUnaReservaConfirmadaVencida() {
-        Reservation noShow = scheduled(ReservationStatus.CONFIRMED, NOW.minusMinutes(10)).registrarInasistencia(NOW);
+    void registraInasistenciaDeUnaReservaConfirmadaPasadaLaTolerancia() {
+        Reservation noShow = scheduled(ReservationStatus.CONFIRMED, NOW.minusMinutes(15))
+                .registrarInasistencia(NOW, TOLERANCE);
         assertEquals(ReservationStatus.NO_SHOW, noShow.getStatus());
     }
 
     @Test
-    void noRegistraInasistenciaDeUnaReservaCancelada() {
+    void noRegistraInasistenciaDentroDeLaTolerancia() {
         BusinessExceptions error = assertThrows(BusinessExceptions.class,
-                () -> scheduled(ReservationStatus.CANCELLED, NOW.minusMinutes(10)).registrarInasistencia(NOW));
-        assertEquals(ReservationMessageExceptions.CANNOT_MARK_NO_SHOW, error.getExceptionMessage());
+                () -> scheduled(ReservationStatus.CONFIRMED, NOW.minusMinutes(10)).registrarInasistencia(NOW, TOLERANCE));
+        assertEquals(ReservationMessageExceptions.NO_SHOW_TOLERANCE_NOT_REACHED, error.getExceptionMessage());
+    }
+
+    @Test
+    void noRegistraInasistenciaDeUnaReservaPendienteNiCancelada() {
+        for (ReservationStatus status : new ReservationStatus[]{ReservationStatus.PENDING, ReservationStatus.CANCELLED}) {
+            BusinessExceptions error = assertThrows(BusinessExceptions.class,
+                    () -> scheduled(status, NOW.minusHours(1)).registrarInasistencia(NOW, TOLERANCE));
+            assertEquals(ReservationMessageExceptions.CANNOT_MARK_NO_SHOW, error.getExceptionMessage());
+        }
+    }
+
+    @Test
+    void elAdministradorCorrigeUnaInasistenciaDentroDe48Horas() {
+        Reservation noShow = scheduled(ReservationStatus.CONFIRMED, NOW.minusHours(2))
+                .registrarInasistencia(NOW.minusHours(1), TOLERANCE);
+
+        Reservation corrected = noShow.corregirInasistencia("  El cliente sí asistió  ", NOW, Duration.ofHours(48));
+
+        assertEquals(ReservationStatus.CANCELLED, corrected.getStatus());
+        assertEquals("Inasistencia corregida: El cliente sí asistió", corrected.getNotes());
+    }
+
+    @Test
+    void noCorrigeDespuesDe48HorasNiSinMotivo() {
+        Reservation noShow = scheduled(ReservationStatus.CONFIRMED, NOW.minusDays(4))
+                .registrarInasistencia(NOW.minusDays(3), TOLERANCE);
+        BusinessExceptions late = assertThrows(BusinessExceptions.class,
+                () -> noShow.corregirInasistencia("Marcada por error", NOW, Duration.ofHours(48)));
+        assertEquals(ReservationMessageExceptions.CANNOT_REVERT_NO_SHOW, late.getExceptionMessage());
+
+        Reservation recent = scheduled(ReservationStatus.CONFIRMED, NOW.minusHours(2))
+                .registrarInasistencia(NOW.minusHours(1), TOLERANCE);
+        BusinessExceptions noReason = assertThrows(BusinessExceptions.class,
+                () -> recent.corregirInasistencia("  ", NOW, Duration.ofHours(48)));
+        assertEquals(ReservationMessageExceptions.INVALID_CORRECTION_REASON, noReason.getExceptionMessage());
     }
 
     private static final Duration NOTICE = Duration.ofMinutes(60);

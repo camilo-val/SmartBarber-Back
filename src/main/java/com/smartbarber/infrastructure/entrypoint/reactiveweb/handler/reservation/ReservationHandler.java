@@ -4,6 +4,7 @@ import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.reservation.Res
 import java.util.List;
 import com.smartbarber.application.usecase.reservation.servicereservation.RescheduleReservationUc;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.reservation.RescheduleReservationRqDto;
+import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.penalty.ReasonRqDto;
 import com.smartbarber.infrastructure.entrypoint.utils.validateRequest;
 import com.smartbarber.domain.model.reservation.Reservation;
 import com.smartbarber.infrastructure.entrypoint.reactiveweb.dto.reservation.OccupiedSlotRsDto;
@@ -132,6 +133,17 @@ public class ReservationHandler {
         UUID reservationId = UUID.fromString(request.pathVariable("id"));
 
         return changeReservationStatusUc.markNoShow(reservationId)
+                .flatMap(reservation -> ServerResponse.ok().bodyValue(reservation));
+    }
+
+    /** PATCH /reservation-service/{id}/revert-no-show  { "reason": "..." } (ADMIN, PEN-14) */
+    public Mono<ServerResponse> revertNoShow(ServerRequest request) {
+        UUID reservationId = UUID.fromString(request.pathVariable("id"));
+
+        return request.bodyToMono(ReasonRqDto.class)
+                .switchIfEmpty(Mono.error(() -> new IllegalArgumentException("Cuerpo vacío")))
+                .doOnNext(validateRequest::validate)
+                .flatMap(body -> changeReservationStatusUc.revertNoShow(reservationId, body.reason()))
                 .flatMap(reservation -> ServerResponse.ok().bodyValue(reservation));
     }
 

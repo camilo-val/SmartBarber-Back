@@ -9,6 +9,7 @@ public class HandlerConstant {
     public static final String SCHEDULE_SERVICE = "schedule-service";
     public static final String NON_WORKING_DAY_SERVICE = "/non-working-day-service";
     public static final String STATISTICS_SERVICE = "/statistics-service";
+    public static final String PENALTY_SERVICE = "/penalty-service";
     public static final String PUBLIC = "public/";
     public static final String SERVICES_SERVICE = "services-service";
     public static final String ROLE_SERVICE = "role-service";

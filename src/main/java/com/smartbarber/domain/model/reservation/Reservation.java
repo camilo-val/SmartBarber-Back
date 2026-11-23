@@ -342,19 +342,54 @@ public class Reservation {
     }
 
     /**
-     * El cliente no se presentó a una reserva agendada. Solo desde PENDING o
-     * CONFIRMED y una vez llegada la hora de inicio.
+     * El cliente no se presentó a una reserva agendada (RF-82, PEN-01). Solo
+     * desde CONFIRMED y cuando ya pasó la hora de inicio más la tolerancia de
+     * la barbería: antes de eso el cliente todavía puede llegar.
      */
-    public Reservation registrarInasistencia(OffsetDateTime now) {
+    public Reservation registrarInasistencia(OffsetDateTime now, Duration tolerance) {
         boolean scheduled = reservationType == ReservationType.SERVICE_RESERVATION;
-        boolean open = status == ReservationStatus.PENDING || status == ReservationStatus.CONFIRMED;
-        if (!scheduled || !open) {
+        if (!scheduled || status != ReservationStatus.CONFIRMED) {
             throw new BusinessExceptions(ReservationMessageExceptions.CANNOT_MARK_NO_SHOW);
         }
-        if (startTime == null || startTime.isAfter(now)) {
-            throw new BusinessExceptions(ReservationMessageExceptions.RESERVATION_NOT_STARTED);
+        Duration wait = tolerance == null ? Duration.ZERO : tolerance;
+        if (startTime == null || startTime.plus(wait).isAfter(now)) {
+            throw new BusinessExceptions(ReservationMessageExceptions.NO_SHOW_TOLERANCE_NOT_REACHED);
         }
         return withStatus(ReservationStatus.NO_SHOW, this.endTime, now);
+    }
+
+    /**
+     * El administrador corrige una inasistencia marcada por error (PEN-14):
+     * solo dentro de {@code window} desde que se marcó y con motivo. La reserva
+     * pasa a CANCELLED con la nota de corrección y deja de contar.
+     */
+    public Reservation corregirInasistencia(String reason, OffsetDateTime now, Duration window) {
+        if (status != ReservationStatus.NO_SHOW) {
+            throw new BusinessExceptions(ReservationMessageExceptions.CANNOT_REVERT_NO_SHOW);
+        }
+        OffsetDateTime markedAt = updatedDate != null ? updatedDate : endTime;
+        if (markedAt == null || markedAt.plus(window).isBefore(now)) {
+            throw new BusinessExceptions(ReservationMessageExceptions.CANNOT_REVERT_NO_SHOW);
+        }
+        String normalized = reason == null ? "" : reason.trim().replaceAll("\\s+", " ");
+        if (normalized.length() < 5 || normalized.length() > 200) {
+            throw new BusinessExceptions(ReservationMessageExceptions.INVALID_CORRECTION_REASON);
+        }
+        return new Reservation(
+                this.id,
+                this.customerId,
+                this.barbershopId,
+                this.employeeId,
+                this.reservationType,
+                ReservationStatus.CANCELLED,
+                this.duration,
+                this.startTime,
+                this.endTime,
+                "Inasistencia corregida: " + normalized,
+                this.creationDate,
+                now,
+                this.queueEntryTime
+        );
     }
 
         /**

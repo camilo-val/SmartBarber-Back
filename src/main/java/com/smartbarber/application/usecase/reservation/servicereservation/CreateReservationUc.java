@@ -18,6 +18,7 @@ import com.smartbarber.infrastructure.drivenadapter.email.EmailService;
 import com.smartbarber.application.usecase.nonworkingday.BarbershopCalendar;
 import com.smartbarber.application.usecase.nonworkingday.FindNonWorkingDaysUC;
 import com.smartbarber.application.usecase.employee.FindBookableBarbersUC;
+import com.smartbarber.application.usecase.penalty.CustomerPenaltyUC;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
@@ -48,6 +49,7 @@ public class CreateReservationUc {
     private final FindNonWorkingDaysUC findNonWorkingDaysUC;
         private final BarbershopCalendar barbershopCalendar;
     private final FindBookableBarbersUC findBookableBarbersUC;
+    private final CustomerPenaltyUC customerPenaltyUC;
 
     public Mono<Reservation> createReservation(ReservationCommand command) {
         return loadServices(command.reservationServiceId())
@@ -118,7 +120,13 @@ public class CreateReservationUc {
                         : Mono.error(new BusinessExceptions(
                                 ReservationMessageExceptions.BARBER_NOT_BOOKABLE)));
 
-        return bookableValidation
+        // Un cliente restringido no crea reservas en esta barbería (PEN-09);
+        // la cola virtual sigue disponible porque no aparta espacios (PEN-11).
+        Mono<Void> penaltyValidation = customerPenaltyUC
+                .ensureCanBook(command.customerId(), command.barbershopId());
+
+        return penaltyValidation
+                .then(bookableValidation)
                 .then(Mono.when(openDayValidation, employeeValidation, customerValidation));
     }
 

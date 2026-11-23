@@ -277,6 +277,10 @@ public class SecurityConfig {
                         )
 
                         .pathMatchers(HttpMethod.PATCH,
+                                "/reservation-service/*/revert-no-show"
+                        ).hasRole(RoleType.ADMIN.name())
+
+                        .pathMatchers(HttpMethod.PATCH,
                                 "/reservation-service/*/confirm",
                                 "/reservation-service/*/complete",
                                 "/reservation-service/*/no-show"
@@ -365,6 +369,37 @@ public class SecurityConfig {
                                 RoleType.BARBER.name(),
                                 RoleType.ADMIN.name()
                         )
+
+
+                        // =================================================
+                        // PENALIZACIÓN DE CLIENTES (inasistencias y restricciones)
+                        // =================================================
+
+                        .pathMatchers(HttpMethod.GET,
+                                "/penalty-service/policy/barbershop/*"
+                        ).hasAnyRole(
+                                RoleType.CUSTOMER.name(),
+                                RoleType.BARBER.name(),
+                                RoleType.ADMIN.name()
+                        )
+
+                        .pathMatchers(HttpMethod.GET,
+                                "/penalty-service/policy/mine",
+                                "/penalty-service/customers"
+                        ).hasRole(RoleType.ADMIN.name())
+
+                        .pathMatchers(HttpMethod.PUT,
+                                "/penalty-service/policy/mine"
+                        ).hasRole(RoleType.ADMIN.name())
+
+                        .pathMatchers(HttpMethod.PATCH,
+                                "/penalty-service/restrictions/*/lift"
+                        ).hasRole(RoleType.ADMIN.name())
+
+                        .pathMatchers(HttpMethod.GET,
+                                "/penalty-service/me",
+                                "/penalty-service/me/barbershop/*"
+                        ).hasRole(RoleType.CUSTOMER.name())
 
 
                         // =================================================
